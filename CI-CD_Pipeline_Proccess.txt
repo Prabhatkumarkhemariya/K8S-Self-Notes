@@ -1,0 +1,336 @@
+Defination of CI-CD:
+A CI/CD pipeline is an automated workflow that integrates code changes (Continuous Integration) and delivers them to production (Continuous Deployment/Delivery) through stages like build, test, and deployment. It is used to ensure faster, reliable, and consistent software delivery by reducing manual effort, catching issues early, and enabling frequent, automated releases across environments.
+
+Defination of Git-hub Action CI-CD:
+GitHub Actions is a CI/CD platform that enables automation of software workflows directly within a GitHub repository. It uses event-driven triggers (e.g., push, pull request) to execute jobs defined in YAML workflows. These jobs run on runner(self-hosted/Git-hub hosted) to build, test, and deploy applications. It integrates natively with GitHub for version control, secrets management, and pipeline orchestration.
+																OR
+GitHub Actions is a tool in GitHub used to automate CI/CD workflows. It runs pipelines automatically when events like code push or pull requests happen. Using YAML files, you define steps to build, test, and deploy applications. It helps streamline development by automating the entire software delivery process.
+
+What is a Runner in GitHub Actions?
+A runner is a machine (VM or server) that executes the jobs defined in a GitHub Actions workflow.
+When a workflow is triggered, GitHub assigns the job to a runner, which then runs each step (build, test, deploy).
+Interview-Ready Definition
+A runner in GitHub Actions is the execution environment that runs workflow jobs. It can be either GitHub-hosted (managed by GitHub) or self-hosted (managed by the user), and it processes CI/CD tasks like build, test, and deployment based on workflow configuration.
+Types of Runners in GitHub Actions:
+1️. GitHub-Hosted Runners
+Managed by GitHub
+Pre-configured environments
+Auto-scaled and ephemeral (fresh VM every run)
+Example:
+runs-on: ubuntu-latest
+runs-on: windows-latest
+runs-on: macos-latest
+
+2️. Self-Hosted Runners
+Managed by you (local machine, VM, server, EC2, etc.)
+You install GitHub runner agent
+Example:
+runs-on: self-hosted
+
+Key Differences:
+| Feature     | GitHub-Hosted  | Self-Hosted                         |
+| ----------- | -------------- | ----------------------------------- |
+| Setup       | No setup       | Manual setup required               |
+| Environment | Temporary      | Persistent                          |
+| Control     | Limited        | Full control                        |
+| Use Case    | General CI/CD  | Custom infra, Kubernetes, Terraform |
+| Cost        | Free (limited) | Infra cost                          |
+
+GitHub → assigns job → Runner → executes → returns result
+
+
+
+Managed by you (local machine, VM, server, EC2, etc.)
+
+You install GitHub runner agent
+
+Required Tool for CI-CD-Pipeline:
+✅ GitHub Actions
+✅ Terraform
+✅ Minikube
+✅ Self-hosted runner
+
+Now I’ll give you a step-by-step structured practice plan to build a real CI/CD pipeline locally.
+Code Push
+   ↓
+GitHub Actions (self-hosted)
+   ↓
+Build Docker Image
+   ↓
+Push to Local Registry
+   ↓
+Terraform Deploy to Minikube
+   ↓
+Kubernetes Running App
+
+STEP 0 – Prerequisites (One-Time Setup)
+Make sure on your runner machine:
+docker --version
+kubectl version --client
+terraform version
+minikube version
+
+Start Minikube:
+minikube start
+minikube addons enable ingress
+minikube addons enable metrics-server
+
+STEP 1 – Create Sample Application:
+Create folder:
+devops-ci-cd-project/
+
+Inside create:
+app.js
+const express = require("express");
+const app = express();
+
+app.get("/", (req, res) => {
+  res.send("CI-CD Practice Project 🚀");
+});
+
+app.listen(3000, () => {
+  console.log("App running on port 3000");
+});
+
+package.json
+{
+  "name": "devops-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+
+What ^ Means:
+The caret (^) allows compatible minor and patch updates, but not major updates.
+means npm can install:
+4.18.2   ✅
+4.18.3   ✅
+4.19.0   ✅
+4.20.5   ✅
+Node.js uses SemVer (Semantic Versioning):
+MAJOR.MINOR.PATCH
+Example:
+4.18.2
+│ │  │
+│ │  └── Patch (bug fixes)
+│ └──── Minor (new features)
+└────── Major (breaking changes)
+
+STEP 2 – Create Dockerfile:
+FROM node:18-alpine
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+EXPOSE 3000
+
+CMD ["node", "app.js"]
+
+Test locally:
+docker build -t devops-app .
+docker run -p 3000:3000 devops-app
+
+Check in browser:
+http://localhost:3000
+
+STEP 3 – Setup Local Docker Registry (Simulate ECR):
+docker tag devops-app localhost:5000/devops:1
+docker push localhost:5000/devops-app:1
+Now your cluster can pull images from:
+localhost:5000/devops-app:1
+
+STEP 4 – Terraform for Kubernetes Deployment
+Create folder:
+infra/
+provider.tf
+provider "kubernetes" {
+  config_path = "~/.kube/config"
+}
+
+main.tf
+resource "kubernetes_deployment" "app" {
+  metadata {
+    name = "devops-app"
+    labels = {
+      app = "devops"
+    }
+  }
+
+  spec {
+    replicas = 2
+
+    selector {
+      match_labels = {
+        app = "devops"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "devops"
+        }
+      }
+
+      spec {
+        container {
+          name  = "devops-container"
+          image = "localhost:5000/devops-app:1"
+
+          port {
+            container_port = 3000
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_service" "app" {
+  metadata {
+    name = "devops-service"
+  }
+
+  spec {
+    selector = {
+      app = "devops"
+    }
+
+    port {
+      port        = 80
+      target_port = 3000
+    }
+
+    type = "NodePort"
+  }
+}
+
+Test manually:
+cd infra
+terraform init
+terraform apply -auto-approve
+
+Verify:
+minikube service devops-service
+
+Access using:
+minikube service devops-service
+
+if above access command is not working use below port forwarding. this will work.
+kubectl port-forward service/devops-service 9090:80
+
+STEP 5 – Create GitHub Repository
+Push entire project to GitHub.
+All step to push the code on Remote repository.
+Create Repository in GitHu:
+Go to 👉 https://github.com
+Click ➕ (top right)
+Click New repository
+Give name:
+devops-ci-cd-project
+https://github.com/Naveen-Singh266/devops-ci-cd-project.git
+1. Go to Your Project Folder
+cd https://github.com/Naveen-Singh266/devops-ci-cd-project.git
+2. Initialize Git (If Not Already)
+git init
+3. Create .gitignore (Very Important)
+mkdir .gitignore
+cd .gitignore
+vi note.txt 
+add this.
+node_modules/
+.env
+*.log
+terraform.tfstate
+terraform.tfstate.backup
+.terraform/
+4. Add & Commit Files
+git add .
+git commit -m "Initial commit - DevOps CI/CD project"
+5. Add GitHub Remote
+git remote add origin https://github.com/<your-username>/devops-ci-cd-project.git
+Verify:
+git remote -v
+git push -u origin main/master
+6. If It Asks for Password
+GitHub no longer allows password authentication.
+Use:
+👉 Personal Access Token (PAT)
+Create it here:
+https://github.com/settings/tokens
+Generate token with:
+repo access
+Use token instead of password.
+After Push Refresh GitHub page.
+
+7. After Push
+Refresh GitHub page.
+
+STEP 6 – Create GitHub Actions Workflow
+.github/workflows/pipeline.yaml  
+In-order to create this.
+Go to the repository(devops-ci-cd-project)
+Click on Add file > Create new file > paste(.github/workflows/pipeline.yml) in place of the "Name your file".
+Update the ci-cd code in pipeline.yml and commit it.
+
+
+name: Local CI-CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Docker Login
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Build Docker Image
+        run: |
+          docker build -t naveen266/devops-app:${{ github.run_number }} .
+          docker push naveen266/devops-app:${{ github.run_number }}
+
+      - name: Terraform Init
+        working-directory: infra
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: infra
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: infra
+        run: terraform plan -var="image_tag=${{ github.run_number }}"
+
+      - name: Terraform Apply
+        working-directory: infra
+        run: terraform apply -auto-approve -var="image_tag=${{ github.run_number }}"
+
+      - name: Wait for Deployment
+        run: kubectl rollout status deployment/devops-app
+
+      - name: Verify the Pods
+        run: kubectl get pods -o wide
+		
+Go to setting of inside the repository(devops-ci-cd-project) > Secrets and variables > action > New repository secret
+Create the DOCKER_USERNAME & DOCKER_PASSWORD save and close it.
+
+Go to Actions inside the setting > Runners.
+add the new self-hosted runner select the Window or Linux or macOS.
+and follow instructions in order to syncup in Github and target point(Local-Desktop) to listen and run build through Github-action.
+Our purpose to create this. Whenever we push anychanges on github in same repository. CI-CD pipeline should start running.
+
+
+
+Why is actions/checkout required?
+The actions/checkout action clones the repository into the runner environment so that subsequent pipeline steps like build, test, or deployment can access the application code.
+

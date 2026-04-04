@@ -1,0 +1,840 @@
+What is a Shell Script?
+A shell script is simply a text file that contains a series of commands written for a shell (like bash, sh, zsh, etc.) to execute — automatically and in sequence.
+
+Think of it like this:
+A shell script = a batch of Linux commands you write once → then the computer runs them one by one automatically.
+
+What is “shell”?
+A shell is a program that takes commands from you and gives them to the operating system to execute.
+Examples:
+| Shell Name | Command Interpreter | Commonly Used In         |
+| ---------- | ------------------- | ------------------------ |
+| `bash`     | Bourne Again Shell  | Linux / Git Bash / macOS |
+| `sh`       | Bourne Shell        | Legacy systems           |
+| `zsh`      | Z Shell             | macOS, advanced users    |
+| `ksh`      | Korn Shell          | Unix systems             |
+So a shell script is written in a specific shell’s language — most commonly Bash (#!/bin/bash).
+
+=>if [ $? -eq 0 ]; then
+means:
+“If the previous command ran successfully (exit status = 0), then execute the next block of code.”  other then 0 means failed.
+example:
+mkdir test_dir
+
+if [ $? -eq 0 ]; then
+    echo "✅ Directory created successfully"
+else
+    echo "❌ Failed to create directory"
+fi
+
+=>kubectl rollout restart deployment "$deploy" -n "$ns"
+Summary
+| Part         | Meaning                          |
+| ------------ | -------------------------------- |
+| `kubectl`    | Kubernetes CLI                   |
+| `rollout`    | Manage rollout of updates        |
+| `restart`    | Triggers a new rollout (restart) |
+| `deployment` | Type of resource to restart      |
+
+
+
+=>What is logic of ' ' and " " in Bash
+" " → Let Bash substitute variables.
+' ' → Don’t touch this text, pass it literally.
+
+=>kubectl get pod mypod -o jsonpath='{.status.phase}'
+Breakdown of the command:
+-o : “output format”
+Common formats:
+| Format            | Meaning                                      |
+| ----------------- | -------------------------------------------- |
+| `-o wide`         | Show more details in table form              |
+| `-o yaml`         | Show detailed YAML output                    |
+| `-o json`         | Show detailed JSON output                    |
+| `-o jsonpath=...` | Extract **specific fields** from JSON output |
+| `-o name`         | Show only the resource name                  |
+
+-o jsonpath=... means: “Output this resource in JSON format, and then extract specific values using a JSONPath expression.”
+
+If you run:
+kubectl get pod mypod -o json
+You might get output like this (simplified):
+{
+  "metadata": {
+    "name": "mypod",
+    "namespace": "default"
+  },
+  "status": {
+    "phase": "Running",
+    "hostIP": "10.0.0.12",
+    "podIP": "10.0.0.23"
+  }
+}
+Now, instead of seeing all this clutter, you can extract only one field:
+kubectl get pod mypod -o jsonpath='{.status.phase}'
+
+JSONPath Syntax — Deeper Look:
+| Expression                   | Meaning                                                      |
+| ---------------------------- | ------------------------------------------------------------ |
+| `{.metadata.name}`           | Get the pod name                                             |
+| `{.status.phase}`            | Get the pod’s current phase (Pending, Running, Failed, etc.) |
+| `{.spec.containers[*].name}` | Get all container names inside the pod                       |
+| `{.items[*].metadata.name}`  | Get names of all pods when using `kubectl get pods` (plural) |
+| `{.items[*].status.podIP}`   | Get IPs of all pods                                          |
+
+=>pods=$(kubectl get pods -n "$ns" --no-headers)
+kubectl get pods -n "$ns"
+Example output:
+NAME                       READY   STATUS    RESTARTS   AGE
+nginx-deployment-7b9c7f6d6d-9bzv2   1/1     Running   0          5m
+nginx-deployment-7b9c7f6d6d-fh7wg   1/1     Running   0          5m
+Here, the first line (NAME READY STATUS ...) is the header row.
+
+--no-headers
+This flag tells kubectl not to print the header line.
+nginx-deployment-7b9c7f6d6d-9bzv2   1/1   Running   0   5m
+nginx-deployment-7b9c7f6d6d-fh7wg   1/1   Running   0   5m
+No header line appears at the top.
+
+=>kubectl get pods -n "$ns" | awk 'NR>1 {print $1, $3}' | while read pod status; do
+awk 'NR>1 {print $1, $3}
+The syntax pattern
+awk 'condition {action}'
+condition → a test expression (like an if condition)
+{action} → what to do if the condition is true (like print)
+If the {action} is omitted, awk prints the whole line by default.
+So what is NR>1
+NR = Number of Record (or line number).
+It’s a condition that means:
+“Only process lines where the line number is greater than 1.”
+In other words → Skip the first line.
+kubectl get pods -n "$ns"
+Example:
+NAME                       READY   STATUS    RESTARTS   AGE
+nginx-5c7588df-abcde       1/1     Running   0          5m
+backend-6f65d9df-ghijk     1/1     Pending   0          2m
+NR>1 skips the header:
+nginx-5c7588df-abcde       1/1     Running   0          5m
+backend-6f65d9df-ghijk     1/1     Pending   0          2m
+Summary:
+| Expression                  | Meaning                                | Result                                 |
+| --------------------------- | -------------------------------------- | -------------------------------------- |
+| `NR`                        | Line number (1, 2, 3, …)               | Used to track which line is being read |
+| `NR>1`                      | True for all lines except the first    | Skips the first line (header)          |
+| `awk 'NR>1 {print $1, $3}'` | Skip header, print 1st and 3rd columns | Clean data output                      |
+
+=>echo -e "\nNamespace: $ns" 
+The -e option tells echo to enable interpretation of backslash escape sequences — like \n, \t, etc.
+-e allows you to use special characters (like newlines and tabs) inside the string.
+Example:
+Without -e:
+echo "\nHello"
+Output:
+\nHello
+
+With -e:
+echo -e "\nHello"
+Output:
+
+Hello
+Notice the blank line before “Hello”? That’s because \n created a new line.
+
+=> What 2>/dev/null Means
+In shell (Bash), every process has three standard data streams:
+| Stream     | Number | Purpose              | Example                           |
+| ---------- | ------ | -------------------- | --------------------------------- |
+| **stdin**  | `0`    | Input to the program | Keyboard, file input              |
+| **stdout** | `1`    | Normal output        | Command results                   |
+| **stderr** | `2`    | Error messages       | “No such file or directory”, etc. |
+
+>/dev/null
+Means “send standard output (1)** to nowhere**.”
+So if you write:
+command > /dev/null
+you’re hiding all normal output (but errors still show).
+
+2>/dev/null
+Means “send standard error (2)** to nowhere**.”
+So if you write:
+command 2>/dev/null
+you’re hiding all error messages but keeping normal output visible.
+/dev/null
+It’s a special file in Linux that acts like a black hole
+→ Anything written to it just disappears.
+
+=> kubectl logs "$pod" -n "$ns" --follow --tail 20 | tee "$output"
+kubectl logs --follow: streams logs continuously.
+| tee "$output": writes the logs to the file and displays them on the screen.
+
+=> if [ ! -f "$logfile" ]; then
+Checks if the file does NOT exist (! -f means “not a file”). $logfile is the path entered by the user.
+exit 1
+Exit the script with status code 1, indicating an error.
+grep -i "$keyword" "$logfile"
+grep searches for the keyword in the file.
+The -i flag makes it case-insensitive (e.g., “Error” == “error” == “ERROR”).If matches are found, it prints the matching lines.
+
+Case-Sensitive Search (grep without -i)
+grep "Error" app.log
+Only the line with exactly “Error” (capital E) is shown. Lines with “ERROR” or “error” are not matched.
+
+=> count=$(grep -i "error" "$logfile" | wc -l)
+| wc -l
+The pipe (|) sends the output of grep into the next command (wc -l).
+wc = word count command.
+The -l option means “count the number of lines”.
+
+=> tail -f "$logfile"
+The -f stands for “follow”. It tells tail to keep watching the file — as new lines are added, tail will automatically print them to the screen.
+So it doesn’t stop after showing the last 10 lines — it stays open and streams new updates live.
+
+=> find "$dir" -type f -name "*.log" -mtime +"$days" -exec rm -f {} \;
+Step-by-Step Explanation
+| Part                | Meaning                                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `find`              | The Linux command used to **search for files/directories** based on conditions (name, type, time, size, etc.)             |
+| `"$dir"`            | The **directory path** where the search starts. It’s a variable (e.g., `/var/logs` or `/d/DevOps_Interview_question/...`) |
+| `-type f`           | Look only for **files** (not directories, links, etc.)                                                                    |
+| `-name "*.log"`     | Match only files ending with `.log`                                                                                       |
+| `-mtime +"$days"`   | Match files last modified more than `$days` days ago                                                                  |
+| `-exec rm -f {} \;` | For each file found (`{}` = placeholder for the file path), execute the command `rm -f` (force delete it)                 |
+
+`-mtime +"$days"
+| Part      | Meaning                                                                                |
+| --------- | -------------------------------------------------------------------------------------- |
+| `-mtime`  | **Modification time** — how long ago the file was last modified (in *days*).           |
+| `+`       | Means **“greater than”**.                                                              |
+| `"$days"` | A **variable** that stores the number of days you want to compare (e.g., 7, 10, etc.). |
+
+| Expression  | Meaning                             | Example (if `$days` = 7) |
+| ----------- | ----------------------------------- | ------------------------ |
+| `-mtime +7` | Modified **more than 7 days ago**   | older than 7 days        |
+| `-mtime 7`  | Modified **exactly 7 days ago**     | between 7 and 8 days ago |
+| `-mtime -7` | Modified **within the last 7 days** | newer than 7 days        |
+
+-exec rm -f {} \;
+| Part    | Meaning                                                                                  |
+| ------- | ---------------------------------------------------------------------------------------- |
+| `-exec` | Tells `find` to **execute a command** on each file it finds                              |
+| `rm -f` | The command to **forcefully remove (delete)** the file                                   |
+| `{}`    | A **placeholder** for the current file found by `find`                                   |
+| `\;`    | Marks the **end of the command**; required to tell `find` where the `-exec` command ends |
+
+The \; tells find: “This is the end of the command you want me to execute.”
+Without \;, find would keep waiting for more input and show an error.
+rm -f {}   # deletes the file found by find
+
+=> grep -i "error" "$logfile" | awk -F'error' '{print $2}' | sort | uniq -c
+awk: it is a text-processing tool that works line by line.
+Meaning of -F
+The -F option in awk means:
+“Use this as the field separator (FS) instead of whitespace.”
+Step-by-Step Example
+Input line:
+2025-10-14 19:32:49 error Connection timeout in module A
+Step 1️ — Field Separator = error
+Everything before the word error → Field 1 ($1)
+Everything after the word error → Field 2 ($2)
+So:
+| Field | Value                             |
+| ----- | --------------------------------- |
+| `$1`  | `2025-10-14 19:32:49 `            |
+| `$2`  | ` Connection timeout in module A` |
+Step 2️— Action: {print $2}
+This tells awk to print only the second field — i.e., the part after error.
+Output:  
+Connection timeout in module A
+Summary Table:
+| Part              | Meaning                                                 |
+| ----------------- | ------------------------------------------------------- |
+| `awk`             | Line-based text processor                               |
+| `-F`              | Define a custom **field separator**                     |
+| `'error'`         | Use the **string "error"** as the splitting pattern     |
+| `{print $2}`      | Print the **second field**, i.e., content after "error" |
+| Internal variable | `FS="error"`                                            |
+| Works with        | Multi-character strings and regex                       |
+In short:
+| Command                      | Role                                             |
+| ---------------------------- | ------------------------------------------------ |
+| `awk -F'error' '{print $2}'` | Extracts text after the word “error”             |
+| `sort`                       | Groups identical error messages together         |
+| `uniq -c`                    | Counts how many times each unique error occurred |
+
+=> if [ -f "$file" ]; then
+-f checks if a regular file exists.
+This avoids errors if there are no .log files.
+
+=> mv "$file" "$backupdir/$(basename "$file" .log)_$timestamp.log"
+mv: Moves or renames files.
+"${file}": Source file — current log.
+"$backupdir/$(basename "$file" .log)_$timestamp.log": Destination with a new name.
+$(basename "$file" .log)
+basename <path> [suffix]
+Example 1 — Without suffix
+basename /var/log/myapp/app.log
+→ Output: app.log (It removes only the directory path, nothing else.)
+Example 2 — With suffix
+basename /var/log/myapp/app.log .log
+→ Output:app (Now, it also removes the .log extension from the end of the filename.)
+$(basename "$file" .log)
+the .log is a suffix pattern — it tells basename:
+“If the filename ends with .log, remove that part too.”
+
+=> df -Ph | grep -vE '^Filesystem|tmpfs|cdrom' 
+grep -vE means:
+-v → invert match (exclude lines matching the pattern)
+-E → use extended regex (allows | alternation, etc.)
+1) ^Filesystem
+The first line of df output is a header, not actual data.
+Example:
+Filesystem      Size  Used Avail Use% Mounted on
+The regex ^Filesystem matches only that line (since ^ = start of line).
+We exclude it because we only want real filesystems.
+2) tmpfs
+tmpfs = “temporary filesystem” stored in RAM, not on a disk.
+It’s used for:
+/run, /dev/shm, /tmp, etc.
+Very fast, but not persistent (disappears after reboot).
+Disk usage of tmpfs isn’t relevant to disk capacity alerts — it’s memory-based.
+That’s why DevOps engineers always exclude it.
+3) cdrom
+cdrom = CD/DVD mounts.
+They are read-only media — you can’t fill them up.
+Including them in disk checks could cause false alerts (“100% full”).
+So we skip them too.
+
+=> grep -o '[0-9]\+'
+grep
+grep stands for Global Regular Expression Print.
+It searches for text that matches a pattern in the input stream.
+The -o option
+The -o (only matching) flag tells grep:
+“Print only the matching part of the line — not the whole line.”
+The Regular Expression '[0-9]\+'
+| Part    | Meaning                                                               |
+| ------- | --------------------------------------------------------------------- |
+| `[0-9]` | Matches **any single digit** from 0 to 9. (Character class)           |
+| `\+`    | Means “**one or more** occurrences” of the preceding pattern.         |
+| `' '`   | Quotes are used to **protect the pattern** from shell interpretation. |
+
+=> find / -type f -size +100M -print > filelist.txt 2>/dev/null
+find / — Start searching from root /
+-type f — Only consider regular files
+-size +100M — Only files larger than 100 MB
+-print — Output their full path
+> filelist.txt — Save those paths to a text file
+2>/dev/null — Suppress permission errors
+Result:Your filelist.txt will contain a clean list of all files larger than 100MB that you can later use for archiving, analyzing, or deleting.
+=> if [ -s filelist.txt ]; then
+
+-s filelist.txt checks whether the file exists and is not empty.
+
+=> tar -czf large_files.tar.gz -T filelist.txt
+| Flag | Meaning                | Mnemonic               |
+| ---- | ---------------------- | ---------------------- |
+| `-c` | Create archive         | **C → Create**         |
+| `-z` | Compress with gzip     | **Z → Zip**            |
+| `-f` | Specify filename       | **F → File name**      |
+| `-T` | Read files from a list | **T → Text file list** |
+
+=> kubectl get svc | grep -q my-nginx
+grep -q my-nginx
+grep searches for the word "my-nginx" in the incoming text.
+-q stands for quiet mode, meaning:
+It doesn’t print anything on the screen.
+It just returns an exit status code:
+0 (success) → if the pattern "my-nginx" was found.
+1 (failure) → if it wasn’t found.
+
+=> read -p "Enter username: " user
+read → This command reads input from the user (from the keyboard).
+It stores whatever the user types into the variable that follows — here, it’s user.
+-p option → Stands for “prompt”.
+It lets you display a message before reading input.
+Whatever you write inside quotes after -p appears directly in the terminal.
+"Enter username: " → This is the prompt message shown to the user.
+The terminal prints this message and waits for input.
+user → The variable where the input is stored.
+If you type pavan at the prompt, the variable user will contain "pavan".
+
+=> id "$user" &>/dev/null
+Summary Table (Easy to Remember)
+| Pattern     | Meaning                       | Example           | Human meaning        |
+| ----------- | ----------------------------- | ----------------- | -------------------- |
+| `&>`        | Redirect both stdout + stderr | `cmd &>/dev/null` | Run quietly          |
+| `2>&1`      | Redirect stderr to stdout     | `cmd > file 2>&1` | Merge both outputs   |
+| `command &` | Run in background             | `sleep 60 &`      | Don’t block terminal |
+
+=> echo -n "Enter the user name: "
+echo -n prints without a newline.
+
+=> ping -c 2 -W 2 google.com
+-c <count> → “Count of packets to send”
+-c stands for count.
+It tells ping how many ICMP packets to send before stopping.
+Sends 2 packets, then stops automatically.
+Without -c, ping would continue indefinitely until you press Ctrl + C.
+
+-W <timeout> → “Wait time for each reply”
+-W stands for timeout (in seconds).
+It tells ping how long to wait for a reply for each packet before declaring it lost.
+Waits 2 seconds for each reply.
+If the host doesn’t respond within 2 seconds, it’s considered unreachable for that attempt.
+
+=> grep -q "pattern" filename
+-q → “quiet” mode
+It tells grep to not show output, only to return success or failure.
+
+=> timeout 3 bash -c "</dev/tcp/$host/$port" &>/dev/null
+This is the core logic — here’s what’s happening:
+| Part                    | Meaning                                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------------- |
+| `timeout 3`             | Limits the operation to **3 seconds** (so the script doesn’t hang forever).                             |
+| `bash -c`               | Runs the command in a **new Bash shell**.                                                               |
+| `</dev/tcp/$host/$port` | A **special Bash feature** (TCP redirection) — it tries to open a TCP connection to `$host` on `$port`. |
+| `&>/dev/null`           | Suppresses both output and errors (we don’t want to print the raw connection info).                     |
+
+=> curl -o /dev/null -s -w "%{http_code}" "$url"
+curl is used to send HTTP requests to a URL and get information like status codes, headers, or response body.
+| Option              | Meaning                                             | Why used                                                |
+| ------------------- | --------------------------------------------------- | ------------------------------------------------------- |
+| `-o /dev/null`      | Discards the actual webpage content (response body) | We only care about the **status code**, not the HTML    |
+| `-s`                | Silent mode (no progress bar or errors printed)     | Keeps output clean                                      |
+| `-w "%{http_code}"` | “Write out” the HTTP response code                  | Prints only the **status code** like `200`, `404`, etc. |
+| `"$url"`            | The website address (e.g., `https://google.com`)    | The input to check                                      |
+
+or 
+
+| Option               | Explanation                                        |
+| -------------------- | -------------------------------------------------- |
+| `-s`                 | Silent mode (no progress bar or errors)            |
+| `-o /dev/null`       | Discard response body (we don’t need HTML content) |
+| `-w "%{http_code}"`  | Print only HTTP response code                      |
+| `https://google.com` | URL to check                                       |
+
+=> echo "" >> "$report" : Add a new line (just like pressing Enter)
+It adds a blank line to the end of your report file.
+
+=> host "$host" | head -1
+head -1 means:
+“Show only the first line of the output.”
+So, even if host gives many lines, we only keep the first.
+
+=> cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print 100 - $8"%"}' | cut -d'.' -f1)
+1) top -bn1
+top → Displays real-time system performance (CPU, memory, processes, etc.)
+-b → batch mode (for scripts, not interactive)
+-n1 → run only one iteration (not continuously)
+Example output (just the relevant line):
+%Cpu(s):  3.0 us,  1.0 sy,  0.0 ni, 95.5 id,  0.3 wa,  0.0 hi,  0.2 si,  0.0 st
+Here:
+us → user CPU time
+sy → system CPU time
+id → idle (how much CPU is not being used)
+wa, hi, si, st → other specific usage types
+So, in this example, the CPU is 95.5% idle.
+
+awk '{print 100 - $8"%"}'
+$8 represents the 8th field (based on spaces) in the line.
+
+cut -d'.' -f1
+This removes the decimal part (optional step).
+-d'.' → split by the decimal point.
+-f1 → keep the first part (integer only).
+
+=> free | awk '/Mem/{printf("%.2f%%\n", $3/$2*100)}'
+Let’s break this logically:
+free → shows memory info
+/Mem/ → filters only the line that starts with “Mem”
+$3/$2*100 → calculates memory usage = (used ÷ total × 100)
+printf("%.0f%%\n", …) → formats the output
+| Symbol | Meaning                                               |
+| ------ | ----------------------------------------------------- |
+| `%.0f` | Print a **floating-point number** with **0 decimals** |
+| `%%`   | Print literal `%` (percent sign)                      |
+| `\n`   | Move to the next line                                 |
+printf Format Specifiers Cheat Sheet (Bash & awk)
+| **Code** | **Meaning / Example**               | **Example Output** | **Use Case in DevOps**               |
+| -------- | ----------------------------------- | ------------------ | ------------------------------------ |
+| `%s`     | **String** (text)                   | `"Server: nginx"`  | Printing names, status messages      |
+| `%d`     | **Integer (whole number)**          | `5`                | Counting running pods, retries, etc. |
+| `%f`     | **Floating-point number (decimal)** | `3.141593`         | CPU load, memory %, response time    |
+| `%.0f`   | Float with **0 decimals**           | `78`               | Memory usage %, CPU usage            |
+| `%.2f`   | Float with **2 decimals**           | `78.56`            | Precise resource metrics             |
+| `%x`     | Integer in **hexadecimal**          | `ff`               | Debugging or low-level data checks   |
+| `%o`     | Integer in **octal**                | `77`               | Permissions or file mode outputs     |
+| `%c`     | **Single character**                | `A`                | Printing ASCII codes, symbols        |
+| `%b`     | Interpret **backslash escapes**     | `\n` → new line    | When formatting multi-line outputs   |
+| `%%`     | **Literal percent sign**            | `%`                | To show `%` in usage values          |
+
+=> usage=$(echo $output | awk '{print $1}' | sed 's/%//')
+what is the meaning sed 's/%//
+This removes the percent sign % using sed — a stream editor.
+sed 's/pattern/replacement/'
+s → substitute
+pattern → the text you want to find
+replacement → the text to replace it with
+// → means “replace with nothing”
+
+tr -d '%' vs sed 's/%//'
+| Command       | Works how                          | Typical use                                  |
+| ------------- | ---------------------------------- | -------------------------------------------- |
+| `tr -d '%'`   | Deletes all `%` characters         | Faster, simpler for single char removal      |
+| `sed 's/%//'` | Substitutes first `%` with nothing | More flexible (can replace complex patterns) |
+
+
+=> df -h | awk 'NR>1 && $1 != "tmpfs" && $1!= "cdrom" {print $5, $6}' | while read usage partition; do
+df -h: Shows disk usage in human-readable format (-h = show sizes in MB/GB).
+awk 'NR>1': Skips the first line (header) — because we only need actual data.
+&& $1 != "tmpfs" && $1 != "cdrom": Filters out temporary file systems and CD-ROM mounts — those are not real storage disks.
+{print $5, $6}: 
+Prints only:
+$5 → usage percentage (e.g., 80%)
+$6 → mount point (e.g., /)
+| while read usage partition; do
+This loops over each line of the previous output.
+Each line contains two values (usage and partition), split by a space.
+$1 != "tmpfs"	
+$1 → the first column (Filesystem type).
+!= → means “is not equal to”.
+"tmpfs" → a temporary filesystem used by Linux for in-memory storage (RAM-based).
+This condition says:
+“Only include lines where the filesystem is not tmpfs.”
+
+=> What is pgrep
+pgrep stands for “process grep”.
+It searches for running processes by their name or pattern.
+If no process matches → pgrep returns nothing and exit code = 1.
+If matches found → it returns exit code = 0.
+>/dev/null: /dev/null is like a black hole — anything you send there disappears.
+Remember: systemctl is-active returns exit code → 0 = running.
+
+=> ps -eo pid,comm,%cpu,%mem --sort=-%cpu | head -6 >> "$report"
+ps: ps stands for Process Status — it displays information about currently running processes in the system (like Task Manager in Windows)
+-e : -e means “show every process” on the system — not just the ones you started from this terminal. So this lists all processes running on your machine.
+-o pid,comm,%cpu,%mem: -o lets you choose which columns to display (output format).
+| Column | Meaning                                                            |
+| :----- | :----------------------------------------------------------------- |
+| `pid`  | Process ID — unique number assigned to each running process        |
+| `comm` | Command — the name of the executable (e.g., `nginx`, `java`, etc.) |
+| `%cpu` | CPU usage percentage                                               |
+| `%mem` | Memory usage percentage                                            |
+--sort=-%cpu: 
+This sorts the output by CPU usage.
+--sort=%cpu → ascending order (lowest to highest)
+--sort=-%cpu → descending order (highest to lowest)
+| head -6: The pipe (|) sends the output to head -6, which shows only the first 6 lines.
+Usually, the first line of ps output is a header row.
+So, head -6 means: “show top 5 CPU-consuming processes + header.”
+
+Week_9_Log Parsing, Alerting & Notification Automation:
+=> grep -E "ERROR|WARNING"
+grep: Searches for patterns in text (Global Regular Expression Print).
+-E: Enables extended regular expressions (ERE) — allows special regex symbols like
+logic: “Show me all lines that contain the word ERROR or WARNING.”
+grep -E = extended regex → matches multiple patterns (e.g., ERROR|WARNING).
+
+Variants and Tips:
+1) Case-insensitive search (matches “error”, “Error”, etc.):
+grep -Ei "error|warning"
+
+2) Count how many such lines are there:
+grep -Ec "ERROR|WARNING" logfile.log
+
+3) Highlight matches (useful in terminal):
+grep --color=always -E "ERROR|WARNING" logfile.log
+grep -c: count of lines that match the pattern.
+
+grep "ERROR" "$log_file" | awk '{for(i=5;i<=NF;i++) printf $i" "; print ""}' | \
+sort | uniq -c | sort -nr | head -10 >> "$report"
+Summary of Logic:
+| Step | Command                                             | Purpose                       |
+| ---- | --------------------------------------------------- | ----------------------------- |
+| 1    | `grep "ERROR" "$log_file"`                          | Extract lines with errors     |
+| 2    | `awk '{for(i=5;i<=NF;i++) printf $i" "; print ""}'` | Extract only the message text |
+| 3    | `sort`                                              | Prepare for grouping          |
+| 4    | `uniq -c`                                           | Count identical messages      |
+| 5    | `sort -nr`                                          | Sort by most frequent         |
+| 6    | `head -10`                                          | Take top 10                   |
+| 7    | `>> "$report"`                                      | Append results to report      |
+Remember:
+uniq -c = counts unique lines;
+sort -nr = sort by count (numerical, reverse).
+
+awk '{for(i=5;i<=NF;i++) printf $i" "; print ""}'
+summary of Logic:
+| Part                 | Meaning                                                                                                   |
+| -------------------- | --------------------------------------------------------------------------------------------------------- |
+| `awk`                | AWK is a text-processing tool that works line-by-line, splitting each line into fields (columns).         |
+| `'...'`              | The AWK program enclosed in single quotes—defines what to do for each line.		|
+| `for(i=5;i<=NF;i++)` | Loop over all fields from 5th to last                								|
+| `printf $i" "`       | Print them in one line separated by space            								|
+| `print ""`           | Print a newline after finishing each line            								|
+Logic summary:Extract and print only the message text (from column 5 to end) from each log line.
+
+for(i=5;i<=NF;i++):
+Step-by-Step Meaning:
+| Part       | ------------------------Meaning--------------------------| 
+| `for(...)` | Starts a loop — runs repeatedly for a range of values.	|
+| `i=5`      | Start with field number 5         						|
+| `i<=NF`    | Keep looping until the last field 						|
+| `i++`      | Move to the next field each time  						|
+
+Why i=5?
+Think of each log line as a sentence with parts like:
+[Date] [Time] [Server] [App]: [Message Words…]
+example: 2025-11-06 19:45:02 server1 app[1234]: ERROR Database connection failed
+That’s why This AWK command says:
+“Ignore the first four parts — I only care about the message from the 5th word onward.”
+
+Week_10_Backup_Recovery_Archiving_Automation
+=> backup_file="${backup_dir}/backup_$(basename "src_dir")_${timestamp}.tar.gz"
+basename "src_dir": The command basename in Linux extracts the last part (the final directory or file name) from a full path.
+Examples:
+| Command                          | Output       | Explanation                |
+| -------------------------------- | ------------ | -------------------------- |
+| `basename /var/log/syslog`       | `syslog`     | Removes `/var/log/`        |
+
+=> [ -d "$src_dir" ]
+means:
+“Does the variable $src_dir point to an existing directory?”
+| Operator | Checks for | Returns true if...                             | Example                |
+| -------- | ---------- | ---------------------------------------------- | ---------------------- |
+| `-d`     | Directory  | The path exists **and** is a directory         | `/home/pavan/projects` |
+| `-f`     | File       | The path exists **and** is a normal file       | `/home/pavan/testfile` |
+| `-e`     | Existence  | The path exists (file, directory, or anything) | `/home/pavan/...`      |
+
+=> rsync -av --delete "$src" "$dest"
+This command synchronizes files and directories from a source ($src) to a destination ($dest) — efficiently and incrementally.
+In simple words:
+It copies only the changed or new files from the source to the destination,
+keeping the backup up-to-date and deleting old files that no longer exist in the source.
+Let’s decode it piece by piece:
+| Option     | Meaning                                                                                    | Example / Effect                               |
+| ---------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| `-a`       | **Archive mode** — preserves file structure, permissions, timestamps, symbolic links, etc. | Keeps backup identical to original.            |
+| `-v`       | **Verbose** — shows detailed output while running.                                         | Displays what files are being copied.          |
+| `--delete` | **Deletes files in the destination that were deleted in the source.**                      | Keeps destination a true mirror of the source. |
+
+Summary:
+| Concept    | Meaning                                           |
+| ---------- | ------------------------------------------------- |
+| `rsync`    | Synchronizes files between two folders            |
+| `-a`       | Preserve all file attributes                      |
+| `-v`       | Show details of operation                         |
+| `--delete` | Remove files in backup that don’t exist in source |
+| Result     | Efficient, exact mirror backup                    |
+
+if [ ! -f "$backup_file" ]; then: Run commands only if the backup file doesn’t exist 
+
+what is difference between tar -tzf "$backup_file" and tar -czf "$backup_file" "$src_dir"
+
+Option Breakdown:
+| Option | Meaning                                  | Used in            |
+| ------ | ---------------------------------------- | ------------------ |
+| `-c`   | Create a new archive                     | Only in `tar -czf` |
+| `-t`   | List the contents of an existing archive | Only in `tar -tzf` |
+| `-z`   | Compress or read using gzip              | Both               |
+| `-f`   | Specify the archive file name            | Both               |
+
+Summary Table:
+| Command    | Action    | Description                                   |
+| ---------- | --------- | --------------------------------------------- |
+| `tar -czf` | Create    | Make a compressed backup archive              |
+| `tar -tzf` | Test/List | Show files inside the archive (verify backup) |
+| `tar -xzf` | Extract   | Restore files from backup                     |
+
+=> tar -tzf "$backup_file" >/dev/null 2>&1
+meaning of >/dev/null 2>&1 both
+First, understand outputs in Linux:
+Every Linux command can produce two types of output:
+| Stream | Name       | Description    | Example              |
+| ------ | ---------- | -------------- | -------------------- |
+| `1`    | **stdout** | Normal output  | “Backup successful!” |
+| `2`    | **stderr** | Error messages | “File not found!”    |
+Part 1: >/dev/null
+This means:“Send stdout (1) to /dev/null.” : /dev/null is a special black hole file — anything written there disappears forever.
+But if an error occurs, it still appears on your screen because errors (stderr) are separate.
+Part 2: 2>&1:
+This means:“Send stderr (2) to the same place as stdout (1).”
+Now both normal output and errors go to the same place.
+Since stdout was already sent to /dev/null,
+stderr also gets sent there.
+&>/dev/null = >/dev/null 2>&1
+Summary Table:
+| Command           | Meaning                     | Works in   | Description         |
+| ----------------- | --------------------------- | ---------- | ------------------- |
+| `>/dev/null`      | Hide stdout only            | all shells | Normal output muted |
+| `2>/dev/null`     | Hide stderr only            | all shells | Only errors muted   |
+| `>/dev/null 2>&1` | Hide both stdout and stderr | all shells | Traditional method  |
+| `&>/dev/null`     | Hide both stdout and stderr | Bash & Zsh | Shorter syntax      |
+
+=> [ -z "$latest_backup" ]: Checks if no backup file was found.(-z means “string is empty”).
+
+=> tar -xzf "$latest_backup" -C "$restore_dir"
+Extracts the contents of the latest backup file into the restore directory.
+tar = archive utility.
+-x = extract.
+-z = decompress (gzip).
+-f = file (use this filename).
+-C "$restore_dir" = extract inside this folder.
+
+Week_11_CICD_Pipeline_Automation_via_Shell
+=> If you already have a Git repo somewhere else
+Then go to that folder: cd /path/to/your/project
+Run: git rev-parse --show-toplevel
+That will give you the correct repo_dir.
+git rev-parse: rev-parse stands for “revision parse” and This is a plumbing command in Git — meaning it’s a low-level command that Git itself uses internally (not just for human use).
+The flag --show-toplevel: “Show me the top-level directory of the working tree.”
+Logic Flow:
+1. Start in the current directory
+2. Move upward through parent directories
+3. Look for a ".git" folder
+4. If found, print that folder’s parent path
+5. If not found, throw error:
+   "fatal: not a git repository..."
+   
+=> cd "$repo_dir" || exit
+|| (Logical OR) : In Bash, || means “if the command on the left fails, then run the command on the right.”
+A || B: If A fails, then execute B.
+Logic: Try to change into the directory $repo_dir. If it fails (directory doesn’t exist, or permission denied), exit the script immediately instead of continuing.
+
+=> echo "Build completed successfully!" | tee -a "$log_file"
+tee -a: writes to both terminal and log file.
+-a = append (don’t overwrite).
+
+=> fail_count=0
+This creates a variable named fail_count.It starts at 0.
+Purpose: To count how many test scripts fail during execution.
+
+=> echo "Test failed: $test_script" | tee -a "$log_file"
+echo "Test failed: $test_script": this will print the message on terminal.
+| tee -a "$log_file": 
+| (pipe): Sends the output of echo into the next command (tee).
+tee = tee is a special command used for dual logging. prints output to two places 1) Terminal(eal-time output)  			2) log_file(Persistent log saved on disk).
+-a = append mode, meaning it adds to the file without deleting previous logs.
+
+((fail_count++)): Increments failure counter (fail_count)
+
+exit 0 → success
+exit 1 → failure
+
+=> cp -r: cp -r means "copy a folder and everything inside it (subfolders + files)".
+cp: copy
+-r: recursive
+
+=> if [ -n "$(ls -A "$deploy_dir" 2>/dev/null)" ]; then
+This line checks:Is the deploy directory NOT empty?
+ls -A "$deploy_dir" → lists files including hidden files
+2>/dev/null → hides error messages (like “No such directory”)
+$( ... ) → captures the output
+-n → checks if the captured output is non-empty
+
+=> curl -X POST -H 'Content-type: application/json' \
+     --data '{"text":"❌ Build failed!"}' "$webhook_url"
+	 
+curl is a command-line tool used to send requests to web servers.
+
+-X POST: This tells curl Use HTTP POST method. A POST request means: "Here is some data, please accept it." Slack expects POST requests for incoming webhooks.
+
+-H 'Content-type: application/json': This is a header sent along with the request.
+It tells Slack:“The data I’m sending is in JSON format. Without this header, Slack may reject or misread the message.
+
+--data '{"text":"❌ Build failed!"}': This is the actual message content you want Slack to receive.
+
+"$webhook_url": This is your Slack Webhook URL.
+
+=> bash code_update_build.sh &
+build_pid=$!
+bash code_update_build.sh &: Start build script in background
+Runs code_update_build.sh
+The & sends it to the background so it runs parallel.
+This means the script does not wait for this process to finish.
+
+wait $build_pid $test_pid
+You are telling the script:
+“Do not continue until both the build and the tests finish.”
+
+
+Week_12_Real-World_DevOps_Automation_Project
+“End-to-End DevOps Automation using Shell”
+This is a full mini DevOps pipeline, integrating everything we learned in Weeks 1–11:
+✔ File handling
+✔ Log analysis
+✔ OS monitoring
+✔ Networking
+✔ Kubernetes
+✔ CI/CD
+✔ Alerting (Slack)
+✔ Backup & recovery
+✔ Error handling
+✔ Automation logic
+
+Project Goal
+Build a Self-Health-Checking CI/CD + Monitoring + Backup + Alerting System, triggered automatically.
+This project includes:
+1) System health monitoring
+2) Log scanning for errors
+3) Auto-backup when health fails
+4) Notify Slack when issues appear
+5) Run CI/CD pipeline automatically
+6) Store all actions in reports
+7) Auto-recovery for failed deployments
+
+For findout cpu_usage:
+top -bn1 | grep "Cpu(s)" | awk -F'id,' '{print 100 - $1}' | awk '{print $NF}'
+top -bn1: 
+Runs top in:
+-b → batch mode (machine-readable)
+-n1 → only 1 iteration
+grep "Cpu(s)"
+Extracts the CPU usage line, something like:
+%Cpu(s):  1.2 us,  0.5 sy,  0.0 ni, 98.0 id,  0.2 wa,  0.0 hi,  0.1 si,  0.0 st
+awk '{print 100 - $8}'
+$8 is the idle CPU percentage (id)
+100 - idle% = CPU usage
+
+grep -Ei "error|warn|critical|fail" "$log"
+-E → Extended Regular Expressions (ERE)
+This tells grep:
+“Use advanced/extended regex syntax.”
+What does this allow?
+It allows special regex features like |
+1. | means OR
+2. So "error|warn|critical|fail" means:
+Match any line that contains
+error OR warn OR critical OR fail
+Without -E, | won’t work properly.
+
+-i → Case-Insensitive Matching
+This tells grep:
+“Do not care about uppercase or lowercase.”
+
+Generate a random pass/fail
+random=$(( RANDOM % 2 ))
+$RANDOM is a built-in Bash variable that produces a number between 0–32767.
+% 2 means "take remainder after dividing by 2"
+So the result is either 0 or 1
+Meaning:
+| Value | Meaning |
+| ----- | ------- |
+| **0** | Passed  |
+| **1** | Failed  |
+
+Test Result Based on Random Value:
+if [ $random -eq 0 ]; then
+        echo "Tests passed"
+        exit 0
+else
+        echo "Test failed."
+        exit 1
+fi
+Logic of the IF block
+
+1. If random value = 0 ⇒ tests passed
+Show message
+exit 0 = success (CI/CD continues)
+
+2. If random value = 1 ⇒ test failed
+Show message
+exit 1 = error (CI/CD stops right here)

@@ -1,0 +1,522 @@
+What is the difference between Git and GitHub/GitLab/Bitbucket?
+Answer:
+Git → a distributed version control system (installed on your machine).
+GitHub/GitLab/Bitbucket → hosting platforms that provide collaboration features like pull requests, issue tracking, CI/CD, etc.
+Analogy: Git is your notebook (local control), GitHub is like Google Drive where you share it with your team.
+
+Core of GIT:
+1) Working Directory
+2) Staging Area
+3) Local Repository
+4) Remote Repository
+
+1. Working Directory:
+The actual files/folders on your system that you’re editing.
+Analogy:
+Imagine you’re writing a book. The Working Directory is like your draft notebook where you write freely, erase, and rewrite.
+Command Relation:
+git status shows changes in the working directory.
+
+2. Staging Area (Index):
+The staging area is stored in the .git/index file. It is a binary file that tracks the snapshot of files added for the next commit.
+A place where you select changes you want to commit. Like a preview before final submission.
+Analogy:
+Before sending your book draft to the publisher, you take selected chapters and put them in a "ready-to-publish folder". That’s the Staging Area.
+Command Relation:
+git add file1.txt → moves file1 to staging area.
+git add .						# this add all file in staging in current directory.
+git rm --cached <file_name>		# To undo the file changes back to working directory
+ls -la .git/index
+git ls-files --stage
+
+
+3. Local Repository
+The .git folder in your project. Stores all commits (your project’s history).
+Analogy:
+Once you’re happy with the staged chapters, you put them in your personal library shelf with a label (commit). Each commit is like a versioned copy of your draft.
+Command Relation:
+git commit -m "message" → saves to local repo.
+Show commit history (from objects in .git):
+git log
+
+Note: If we want to see local Repository.
+git init
+ls -a	# we can see the .git folder.
+cd .git
+ls -a		# we see like this "HEAD  config  description  hooks/  index  info/  objects/  refs/"
+HEAD → points to your current branch.
+config → repo config (remote URLs, user info, etc.).
+refs/ → contains references to branches and tags.
+objects/ → stores all commits, trees, and blobs.
+hooks/ → Git hooks for automation.
+
+Super Simple Summary Analogy:
+| Git Component | Real Life Analogy                 |
+| ------------- | --------------------------------- |
+| HEAD          | Current location pointer          |
+| config        | Settings file                     |
+| hooks         | Automated security alarms         |
+| objects       | Vault storing all data            |
+| refs          | Branch index pointers             |
+| .git          | Complete version history database |
+
+
+4. Remote Repository:
+A shared repository hosted on GitHub, GitLab, Bitbucket, etc.
+our personal library (local repo) is private. To collaborate with friends/publishers, you upload your book to Google Drive (remote repo) so others can read or contribute.
+Command Relation:
+git push origin main → sends commits to remote repo.
+
+Key Difference:
+Local Repo = private workspace (your copy of history).
+Remote Repo = shared workspace (team copy of history).
+
+"How are Git hooks used in CI/CD pipelines?"
+Answer: Hooks can run quality checks, security scans, linting, or tests automatically before code gets committed or pushed, ensuring only clean and secure code enters the repo.
+
+How to see what’s in the staging area?
+1. Simple view
+git status
+2. Detailed view:
+git ls-files --stage
+3. Compare staged vs working directory:
+git diff --cached
+
+1. Where are committed files stored(Local Repo)?
+When you run git commit, Git saves your file content as blob objects inside:
+cd .git/objects/
+
+If we want to see the committed version Git saved:
+1) Find the commit hash:
+git log --oneline     
+0d65189 (HEAD -> master) Shell_Script_week1_commited      # Example
+2) Inspect the commit object:
+git cat-file -p <tree-hash>
+Output will show: The tree hash, Author and Commit message 
+3) Inspect the tree object:
+git cat-file -p <tree-hash>
+This lists filenames → blob hashes.
+100644 blob b989eddbd7a85cbc0a84a1e9cb812de2b71a2457    ConditionalStatements.sh			# Example
+4) Inspect a blob (the actual file content):
+git cat-file -p <blob-hash>
+This prints the committed file contents.
+
+When we commit the changes after that we will push the committed changes from local repo to remote repo:
+1. Check if remote is already added
+If you see something like:
+origin  https://github.com/username/repo.git (fetch)
+origin  https://github.com/username/repo.git (push)
+you already have a remote named origin.
+
+If nothing shows → you need to add a remote.
+If you see something like:
+$ git remote -v
+
+admin1@DESKTOP-6UHHD2U MINGW64 /d/DevOps Interview question/Shell Script/Week_1_Basics & CLI Commands (master)
+Then we need to add Remote repo:
+git remote add origin https://github.com/Naveen-Singh266/Shell_Script.git
+
+run below commands:
+we push the changes to remote repo:
+git push -u origin master
+If we are getting the the below error.
+remote: Invalid username or token. Password authentication is not supported for Git operations.
+fatal: Authentication failed for 'https://github.com/Naveen-Singh266/Shell_Script.git/'
+To resolve this error we genrate the PAT(Personal Access Tokens) with following below steps:
+1)Go to GitHub → Settings → Developer settings → Personal Access Tokens → Tokens (classic).
+2)Save it.
+git remote set-url origin https://Naveen-Singh266@github.com/Naveen-Singh266/Shell_Script.git
+Push again:
+git push -u origin master
+
+1. Explaination of Git reset:
+Git Reset: git reset moves the current branch pointer (HEAD) to a different commit.
+It’s like telling Git:"Forget where we were, and go back (or forward) to this commit instead."
+Depending on the mode (--soft, --mixed, --hard), it also decides what to do with your staging area and working directory.
+1) git reset --soft <commit>
+2) git reset --mixed <commit> (default if you just do git reset <commit>)
+3) git reset --hard <commit>
+
+Git Reset Analogy Diagram:
+
+                         WORKING DIRECTORY      STAGING AREA       REPOSITORY (HEAD)
+Initial State:
+(editing files)           ✏️ file.txt          🗂 file.txt         ✅ commit1
+
+After git reset --soft <commit>:
+Undo commit, keep staged
+                         ✏️ file.txt          🗂 file.txt         ⬅️ HEAD moves
+Logic: “Undo submission but keep the pile ready to submit.”
+
+After git reset --mixed <commit>:
+Undo commit, unstage files
+                         ✏️ file.txt          ❌ empty            ⬅️ HEAD moves
+Logic: “Undo submission, clear pile, but edits remain on desk.”
+
+After git reset --hard <commit>:
+Undo commit, erase changes
+                         ❌ empty            ❌ empty            ⬅️ HEAD moves
+Logic: “Start over completely — everything erased.”
+
+Git as a classroom notebook analogy:
+Think of your Git repository like a student’s notebook
+Working Directory → Your desk, where you’re actively writing notes (editing files).
+Staging Area (Index) → A pile of papers ready to hand in.
+Repository (HEAD / commits) → The stack of papers already submitted to the teacher.
+
+1) git reset --soft <commit>
+Analogy: You submitted your homework, but realized you made a mistake.
+You pull the homework back, but keep it in your “ready to submit” pile.
+Logic: Undo submission, but keep everything ready to resubmit.
+
+2) git reset --mixed <commit> (default)
+Analogy: You submitted your homework, but now you want to reorganize which pages you submit.
+Pull it back from the teacher → pile is cleared, but your desk still has all the notes.
+Logic: Undo submission and unstages files, but edits remain in working directory.
+
+3) git reset --hard <commit>
+Analogy: You submitted your homework, then the teacher tells you:
+“Start over from last week’s lesson.”
+You pull back the homework AND erase all notes on your desk.
+Logic: Completely resets the commit, staging area, and working directory — nothing from the undone commits remains.
+
+1. git revert: git revert is same as git reset --hard. but in git revert history will be there and In git reset history will be removed. 
+What it does:
+Creates a new commit that undoes the changes made by a previous commit.
+
+Effect:
+Does NOT delete history.
+The old commit remains in the log.
+A new commit is added that reverses its effect.
+
+Summary:
+Use reset when you want to move the branch pointer back and possibly discard history.
+Use revert when you want to undo a commit without deleting history.
+
+.gitignore:
+Logical Meaning of .gitignore:
+Git tracks files: By default, Git wants to track every file you create in a repo.
+But not every file is useful for version control. For example:
+Temporary files (.log, .tmp, cache files)
+Build outputs (*.class, *.exe, *.o)
+Secrets (.env, config files with passwords)
+OS-specific junk (.DS_Store, Thumbs.db)
+gitignore tells Git:
+“Please pretend these files don’t exist in my project. Don’t track them, don’t commit them, just ignore them.”
+
+Note: If we create the .gitignore and add, modify the rule in .gitignore then we need to add and commit to .gitignore.
+Below are the steps to understand .gitignore logic.
+Create .gitignore
+touch .gitignore
+notepad .gitignore				# Open it
+Add in .gitignore:
+# Ignore log files
+*.log
+
+# Ignore temp files
+*.tmp
+
+# Ignore environment files
+.env
+
+# Ignore build folder
+build/
+git status
+notes.txt
+.gitignore
+And you should NOT see:
+app.log
+temp.tmp
+.env
+build/
+✅ That means Git is pretending those files don’t exist.
+Commit Properly
+.gitignore itself must be committed.
+git add .gitignore notes.txt
+git commit -m "Added gitignore rules"
+
+what is logic of git rm --cached?
+1️. Check git status before git rm --cached
+Assume file2.txt is already tracked by Git and you want to remove it from tracking (but keep it locally):
+
+$ git status
+On branch master
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+        modified:   file2.txt
+		
+Here, Git is tracking file2.txt.
+Any future changes will be staged and committed unless you remove it from tracking.
+
+2️. Run git rm --cached file2.txt
+git rm --cached file2.txt
+rm 'file2.txt'
+Explanation:
+--cached tells Git: remove the file from the staging area and stop tracking it, but don’t delete it from your local filesystem.
+Without --cached, git rm file2.txt would delete the file from both Git and your local system.
+
+3️. Check git status after git rm --cached
+$ git status
+On branch master
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+        deleted:    file2.txt
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        file2.txt
+		
+Git sees that the file has been removed from tracking (deleted in staging), but your local copy still exists.
+Now file2.txt is in the Untracked files section. Git will ignore it in future commits if you add it to .gitignore.
+
+What is Git Branching?
+Git Branching is the way to create seprate lines of devlopment in your repository.
+Think of a branch as a parallel universe of your project: you can work on features, fixes, or experiments without affecting the main code (usually main or master).
+Branching allows multiple developers to work simultaneously without conflicts in the main project.
+
+Analogy:
+Imagine your main road (main branch) is busy. You want to build a side path (feature branch) to test something. When the side path is ready, you merge it back into the main road safely.
+
+Basic Git Branching Commands:
+1) Check existing branches
+git branch
+Shows the list of branches; * indicates the current branch.
+
+2) Create a new branch
+git branch feature1
+Creates a branch named feature1
+
+3) Switch to a branch
+git checkout feature1
+Move to the branch to start working.
+
+4) Create + switch in one step
+git switch -c feature2
+(Modern Git prefers switch over checkout.)
+
+5) git branch -d feature2   #To delete to branch. if it's merge
+6) git branch -D feature2	#If it is not merged: 
+7) git branch remove feature2		#Create a new branch named remove & Starting from branch feature2
+
+5) Merge branch into current branch
+git checkout master
+git merge feature1
+Combines feature1 changes into master.
+
+git checkout master: This command switches your working branch to main. 
+Why?: Git needs to know which branch you are currently on because the next action (merge) will apply changes into the current branch.
+
+Analogy:
+Imagine your branches are different notebooks. You want to copy content from another notebook into your main notebook. First, you open the main notebook (git checkout main).
+
+3. Before merging — check what would happen:
+If you just want to preview the merge (without actually doing it), use:
+git merge --no-commit --no-ff feature1
+--no-commit	= prepare merge, but don’t auto-commit.
+--no-commit → do not finalize with a commit yet
+Normally, Git would auto-create a merge commit if needed.
+With --no-commit, Git pauses before committing.
+👉 You get a chance to inspect with:
+git status
+git diff
+
+--no-ff (no fast-forward) = always create a merge commit (preserve history).
+
+git merge --abort → undo merge
+
+git merge feature1
+This command merges the feature1 branch into the branch you are currently on (here, master).
+What happens:
+Git looks at the differences between main and feature1.
+Git applies all commits from feature1 that aren’t in master.
+The master branch now has all the new changes from feature-login.
+Possible outcomes:
+Fast-forward merge: If master hasn’t changed since you branched off feature-login, Git simply moves the main pointer forward.
+Automatic merge: If both branches have changes, Git tries to combine them automatically.
+Merge conflict: If the same lines were changed differently in both branches, Git will pause and ask you to resolve conflicts manually.
+
+To check merge history
+git log --oneline --graph --decorate
+
+Show merged branches into
+git branch --merged master
+
+Show branches not yet merged into
+git branch --no-merged master
+
+Check commit differences directly
+git log master..feature1 --oneline
+Shows commits present in feature1 but not in master.
+If it shows nothing, then everything is already merged.
+If it shows commits, those are the pending ones.
+
+6) Delete a branch (after merging):
+git branch -d feature1
+
+git reset --hard 3506130(Feature1 commitid)					#This use as undo when merge is completed.
+
+
+1. git checkout (older, multi-purpose)
+Introduced early in Git.
+Very powerful but also overloaded:
+Switch branches
+Create branches
+Restore files
+Detach HEAD to a specific commit
+Example:
+git checkout master       # switch to master branch
+git checkout -b feature1  # create new branch 'feature1' and switch
+git checkout commit_id    # move HEAD to a commit (detached state)
+git checkout file.txt     # restore file.txt from HEAD
+
+2. git switch (newer, branch-focused)
+Introduced in Git 2.23 (2019).
+Dedicated only to branch operations (cleaner, safer, less confusing).
+git switch master         # switch to master branch
+git switch -c feature1    # create new branch 'feature1' and switch
+
+What is Rebase?
+git rebase = Take the commits of y/our branch and replay them on top of another branch’s latest commit.
+It rewrites history → instead of a branching “tree”, it looks like you developed everything in one straight line.
+This makes history clean and linear.
+Goal: Replay your feature commits on top of the latest master so history is linear.
+
+If conflicts occur, Git will pause — use git status, edit files, git add <file>, then git rebase --continue. 
+To cancel: git rebase --abort.
+
+Analogy (Real-life Example):
+Imagine you and your friend are writing a story together:
+Master branch = main story draft.
+Feature branch = your chapter of the story.
+Scenario
+Step 1: Start
+Master story:
+A: "Once upon a time…"
+B: "The hero wakes up."
+You start writing your chapter in feature branch:
+Feature branch:
+C: "The hero finds a map."
+D: "The hero begins journey."
+Meanwhile, someone added to master:
+A---B---E: "The hero meets a guide."
+Now your story is out of sync.
+Option 1: Merge
+If you merge feature into master:
+Git combines the branches and creates a merge commit.
+Your story becomes:
+A---B---E---M
+         \  
+          C---D
+M is the merge commit.
+History shows: “feature branch merged here.”
+✅ Good: safe, preserves history
+⚠️ Looks messy if many branches merge frequently
+
+Option 2: Rebase:
+If you rebase your feature branch on master:
+Git temporarily removes your commits (C, D) from feature branch.
+Moves feature branch to the tip of master (after E).
+Re-applies your commits as if you wrote them after E.
+
+Summary of analogy
+| Concept      | Merge                           | Rebase                                          |
+| ------------ | ------------------------------- | ----------------------------------------------- |
+| What happens | Stick your chapter into master  | Rewrite your chapter as if written after master |
+| History      | Shows branching & merge commit  | Linear, straight story                          |
+| Example      | Master + feature + merge commit | Master → feature replayed commits               |
+
+Memory trick:
+Merge = “combine branches with a merge commit”
+Rebase = “pretend your commits started after the latest master, no merge commit needed”
+
+Step of rebase:
+step1: Switch to feature1
+git checkout feature1/git switch feature1
+Step 2️: Rebase onto master
+git rebase master
+Result: It takes feature1 commits and replays them on top of master.
+
+
+Simple branch graph
+git log --oneline --graph
+With branch names and decorations
+git log --oneline --graph --decorate
+Show all branches in the graph
+git log --oneline --graph --all --decorate
+
+This is the most complete view:
+Graph lines
+All branches (not just current)
+Labels for branches and tags
+
+What is the difference between git commit -m "init" and git commit -am "init"
+git commit -m "init"
+-m "init" just sets the commit message.
+But Git will only commit files that are already staged (via git add).
+If nothing is staged, this command does nothing.
+When required?
+When you carefully control which files to commit by staging them first.
+echo "line1" > a.txt
+git add a.txt
+git commit -m "init"
+commits a.txt
+
+git commit -am "init"
+a = "stage all modified and deleted tracked files automatically"
+-m "init" = commit message.
+Does not include new untracked files. (you still need git add first time).
+When required?
+Useful when you want to quickly commit all changes to files that Git already knows about.
+Example:
+echo "line2" >> a.txt   # modify tracked file
+git commit -am "init"
+commits a.txt without running git add.
+
+Analogy
+git commit -m → like packing only the clothes you selected and folded (git add).
+git commit -am → like telling Git “pack all the clothes you already know about in the closet (tracked files), but if I bought something new (untracked), I need to tell you first (git add).”
+
+What is Git Squash?
+Git squash = combining multiple commits into a single commit.
+It’s used during git rebase -i (interactive rebase).
+Instead of having 5 small messy commits, you “squash” them into 1 clean commit.
+
+Logic of Git Squash
+Git history is a chain of commits.
+Each commit is like a “checkpoint” in time.
+Squash takes multiple checkpoints and merges them into one checkpoint, so history looks cleaner.
+You don’t lose the code changes — only the number of commits gets reduced.
+
+Analogy:
+You first write 5 drafts:
+Fix spelling
+Add intro
+Correct intro
+Add conclusion
+Fix conclusion typo
+If you show this to your teacher, it looks messy.
+Instead, you merge all drafts into 1 polished final essay → that’s squash.
+Now history shows:
+“Write final essay” (instead of 5 scattered drafts).
+
+When is Squash Used?
+Before merging feature branch → master
+Developers often make many small commits like:
+“fix typo”
+“oops bug”
+“final fix really”
+Squash them into one clean commit → “Add login feature”.
+To keep Git history readable
+Instead of hundreds of noisy commits, you have meaningful, summarized commits.
+
+How to Do It?
+Interactive rebase example:
+git rebase -i HEAD~5
+This opens last 5 commits in an editor.
+Change all commits (except first) from pick → squash (or s).
+Save & close → Git combines them into one commit.
+
+Summary:
+Git squash = compressing multiple commits into one.
+Logic: Keep the work, but simplify the history.
+Analogy: Like combining multiple rough drafts into one clean final essay.

@@ -1,0 +1,78 @@
+Docker defination:
+Docker is an open-source containerization platform that packages applications and their dependencies into lightweight, portable containers, ensuring consistent runtime environments across systems. It is used to simplify application deployment, improve portability, enable faster development cycles, and ensure consistency across development, testing, and production environments.
+
+Kubernetes is an open-source container orchestration platform that automates the deployment, scaling, and management of containerized applications across a cluster, ensuring the desired state is maintained. It is used to achieve high availability, scalability, and reliability through features like auto-scaling, self-healing, load balancing, and consistent deployments across environments.
+
+What is Kubernetes? (Interview Perspective)
+Kubernetes is an open-source container orchestration platform that automates the deployment, scaling, and management of containerized applications across a cluster of machines. It ensures desired state management by continuously monitoring and maintaining application health.
+
+Why Kubernetes? (Interview Perspective)
+We use Kubernetes to efficiently manage containerized workloads in production. It provides key capabilities like auto-scaling, self-healing, load balancing, and rolling updates, which ensure high availability and reliability. It also supports declarative configuration and infrastructure abstraction, making deployments consistent across environments (dev, test, prod).
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+Git is a distributed version control system used to track changes in source code, enabling multiple developers to collaborate efficiently while maintaining version history and code integrity. It is used to manage code versions, support branching and merging, and enable seamless collaboration across teams.
+
+Core of GIT:
+1) Working Directory
+2) Staging Area
+3) Local Repository
+4) Remote Repository
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+Defination of CI-CD:
+A CI/CD pipeline is an automated workflow that integrates code changes (Continuous Integration) and delivers them to production (Continuous Deployment/Delivery) through stages like build, test, and deployment. It is used to ensure faster, reliable, and consistent software delivery by reducing manual effort, catching issues early, and enabling frequent, automated releases across environments.
+
+Defination of Git-hub Action CI-CD:
+GitHub Actions is a CI/CD platform that enables automation of software workflows directly within a GitHub repository. It uses event-driven triggers (e.g., push, pull request) to execute jobs defined in YAML workflows. These jobs run on runner(self-hosted/Git-hub hosted) to build, test, and deploy applications. It integrates natively with GitHub for version control, secrets management, and pipeline orchestration.
+																OR
+GitHub Actions is a tool in GitHub used to automate CI/CD workflows. It runs pipelines automatically when events like code push or pull requests happen. Using YAML files, you define steps to build, test, and deploy applications. It helps streamline development by automating the entire software delivery process.
+
+What is a Runner in GitHub Actions?
+A runner is a machine (VM or server) that executes the jobs defined in a GitHub Actions workflow.
+When a workflow is triggered, GitHub assigns the job to a runner, which then runs each step (build, test, deploy).
+Interview-Ready Definition
+A runner in GitHub Actions is the execution environment that runs workflow jobs. It can be either GitHub-hosted (managed by GitHub) or self-hosted (managed by the user), and it processes CI/CD tasks like build, test, and deployment based on workflow configuration.
+Types of Runners in GitHub Actions:
+1️. GitHub-Hosted Runners
+Managed by GitHub
+Pre-configured environments
+Auto-scaled and ephemeral (fresh VM every run)
+Example:
+runs-on: ubuntu-latest
+runs-on: windows-latest
+runs-on: macos-latest
+
+2️. Self-Hosted Runners
+Managed by you (local machine, VM, server, EC2, etc.)
+You install GitHub runner agent
+Example:
+runs-on: self-hosted
+
+Key Differences:
+| Feature     | GitHub-Hosted  | Self-Hosted                         |
+| ----------- | -------------- | ----------------------------------- |
+| Setup       | No setup       | Manual setup required               |
+| Environment | Temporary      | Persistent                          |
+| Control     | Limited        | Full control                        |
+| Use Case    | General CI/CD  | Custom infra, Kubernetes, Terraform |
+| Cost        | Free (limited) | Infra cost                          |
+
+GitHub → assigns job → Runner → executes → returns result
+
+------------------------------------------------------------------------------------------------------------------------------------------
+Terraform – Description
+Terraform is an open-source Infrastructure as Code (IaC) tool that allows you to define, provision, and manage infrastructure using declarative configuration files. It is used to automate infrastructure provisioning, ensure consistency across environments, enable version control of infrastructure, and support scalable, repeatable deployments across multiple cloud and on-prem platforms.
+
+Terraform is an Infrastructure as Code (IaC) tool developed by HashiCorp that enables DevOps engineers to provision, manage, and version cloud infrastructure using declarative configuration files. It allows infrastructure to be defined as code, making deployments repeatable, consistent, and automated across environments.
+
+Terraform supports AWS, Azure, GCP, and on-premises platforms, enabling the creation and management of resources such as VPCs, EC2 instances, EKS clusters, IAM roles, security groups, and load balancers. It uses a state file to track infrastructure changes and provides features like execution plans, modular design, and resource dependency management to safely apply updates.
+
+By integrating Terraform with CI/CD pipelines, teams can achieve automated infrastructure provisioning, version control, scalability, and reduced manual errors, making it a core tool in modern DevOps and cloud-native environments.
+
+
+Main commands:
+  init          Prepare your working directory for other commands
+  validate      Check whether the configuration is valid
+  plan          Show changes required by the current configuration
+  apply         Create or update infrastructure
+  destroy       Destroy previously-created infrastructure

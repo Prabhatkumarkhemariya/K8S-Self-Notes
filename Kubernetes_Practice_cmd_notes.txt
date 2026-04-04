@@ -1,0 +1,873 @@
+#######################################################################################################
+Pod & Node creation:
+# Create pod:
+kubectl get nodes								# To print the list of running nodes.
+kubectl run pod1 --image=nginx					# To run pod (Pod1) with image nginx
+
+# List pods
+kubectl get pods
+kubectl get pods -o wide
+
+# Get pod's events
+kubectl describe pod pod1
+
+# Get pods logs
+kubectl logs pod1
+
+# Get inside pod
+kubectl exec -it pod1-- bash
+> exit
+
+# Delete run pod
+kubectl delete pod pod1
+
+# This command will create test-pod.yaml. But it will not run.
+kubectl run test-pod --image=httpd --dry-run -o yaml>test-pod.yaml
+
+
+# Create below pod1.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod1
+spec:
+  containers:
+  - name: pod1
+    image: httpd
+
+# this is run command	
+kubectl apply -f pod1.yml
+
+# This for listing the pods
+kubectl get pods
+		or 
+kubectl get po
+
+# To delete the pod
+kubectl delete -f pod1.yml
+
+# To explain everything
+kubectl explain pod1
+
+##################################################################################################################################
+Labels:
+
+# To Show labels of pod
+kubectl get pods --show-labels
+
+# To create label app=webapp in running pod1
+kubectl label pod pod1 app=webapp
+
+# To create multiple labels in running pod1
+kubectl label pod pod1 project=projectRed CC=accountRed
+
+# overwrite the value of key as label in running pods
+kubectl label pod pod1 project=projectblue CC=accountapp app=webapp --overwrite
+
+# It will add new label in running pod1
+kubectl label pod pod1 --overwrite run=newpod
+
+# It will do unlabeled available CC
+kubectl label pod pod1 CC-
+
+# create a file pod3.yaml with following contents.
+pod3.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod3
+  labels:
+    app: webapp
+    owner: pavan
+
+spec:
+  containers:
+  - name: webapp
+    image: httpd
+
+# apply and check labels of pods
+kubectl apply -f pod3.yaml
+kubectl get po --show-labels
+
+# edit file and add the new label or update the label
+# apply the file and show labels
+
+kubectl apply -f pod3.yaml
+kubectl get po --show-labels
+
+# Create pods with two containers
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multi-pod
+  labels:
+    app: webapp
+spec:
+  containers:
+  - name: con1
+    image: httpd
+  - name: con2
+    image: mysql
+    env:
+    - name: MYSQL_ROOT_PASSWORD
+      value: "password123"
+	  
+kubectl apply -f multi-con.yml
+kubectl get pods
+kubectl logs multi-pod -c con1
+kubectl logs multi-pod -c con2
+kubectl exec -it multi-pod -c con1 -- bash 
+exit
+kubectl exec -it multi-pod -c con2 -- bash
+exit
+
+# To delete the pod
+kubectl delete po multi-pod
+
+Practice: 2 pods- 1 for wordpress and other for mysql.
+mysql.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mysql-pod
+  labels:
+    app: mysql
+spec:
+  containers:
+  - name: mysql
+    image: mysql
+    env:
+    - name: MYSQL_ROOT_PASSWORD
+      value: "password"
+    - name: MYSQL_DATABASE
+      value: "wordpress"
+    - name: mysql_user
+      value: "wordpress"
+    - name: mysql_password
+      value: "wordpress"
+
+kubectl apply -f mysql.yaml
+kubectl get po -o wide 			# To get IP of created database
+
+wordpress.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: wordpress-pod
+  labels:
+    app: wordpress
+spec:
+  containers:
+  - name: wordpress
+    image: wordpress:latest
+    ports:
+    - containerPort: 80
+    env:        
+    - name: WORDPRESS_DB_HOST
+      value: 10.244.1.2
+    - name: WORDPRESS_DB_NAME
+      value: wordpress
+    - name: WORDPRESS_DB_USER
+      value: wordpress
+    - name: WORDPRESS_DB_PASSWORD
+      value: wordpress
+
+kubectl apply -f wordpress.yaml
+kubectl expose pod wordpress-pod --target-port=80 --port=8095
+kubectl get svc
+wordpress-pod   ClusterIP   10.106.208.82   <none>        8095/TCP   18s
+minikube service wordpress-pod        # To access the service
+kubectl delete svc wordpress-pod
+			or
+kubectl expose pod wordpress-pod --port=80 --type=NodePort
+
+#########################################################################################################################################
+Labels and selectors with service:
+pod-with-labels.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-nginx
+  labels:
+    app: my-nginx
+    env: production
+spec:
+  containers:
+  - name: nginx-container
+    image: nginx
+	
+kubectl apply -f pod-with-labels.yaml
+kubectl get po --show-labels			# To list the labels
+my-nginx   1/1     Running   0          94s   app=my-nginx,env=production
+
+Create service-with-selectors.yaml with the following content:
+my-nginx-svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-nginx-svc
+spec:
+  selector:
+    app: my-nginx
+    env: production
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+kubectl apply -f my-nginx-svc.yaml
+kubectl get svc							# To get services list
+my-nginx-svc   NodePort    10.102.133.223   <none>        80:30789/TCP   11s
+minikube service my-nginx-svc
+
+Expose your wordpress.yaml for pod is created running.
+create wordpress-svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: wp-svc
+spec:
+  selector:
+    app: wordpress
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+	  
+kubectl apply -f wordpress-svc.yaml
+kubectl get svc 
+wp-svc       NodePort    10.96.105.116   <none>        80:31100/TCP   9m6s
+minikube service wp-svc
+
+##########################################################################################################################################
+Create a ReplicaSet(RS):
+Create nginx-rs.yaml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: nginx-rs
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-nginx
+      env: production
+  template:
+    metadata:
+      labels:
+        app: my-nginx
+        env: production
+    spec:
+      containers:
+      - image: nginx
+        name: nginx-container
+		
+kubectl apply -f nginx-rs.yaml
+kubectl get rs
+kubectl scale rs nginx-rs --replicas=5		# To Scale Up
+kubectl scale rd nginx-rs --replicas=2		# To Scale down
+kubectl get rs
+NAME       DESIRED   CURRENT   READY   AGE
+nginx-rs   5         5         5       9m56s
+PS D:\DevOps_Interview_question\Docker Practice\Kubernetes_Practice\K8S_Yaml> kubectl get po
+NAME             READY   STATUS    RESTARTS   AGE
+nginx-rs-79v4s   1/1     Running   0          6m29s
+nginx-rs-8v7kw   1/1     Running   0          11m
+nginx-rs-m2nvk   1/1     Running   0          11m
+nginx-rs-mk2lr   1/1     Running   0          11m
+nginx-rs-whswc   1/1     Running   0          6m29s
+
+Edit the label of any pod under rs and check the reaction
+kubectl label po nginx-rs-79v4s app=your-nginx --overwrite
+kubectl get po --show-labels
+NAME             READY   STATUS    RESTARTS   AGE    LABELS
+nginx-rs-79v4s   1/1     Running   0          11m    app=your-nginx,env=production
+nginx-rs-8v7kw   1/1     Running   0          17m    app=my-nginx,env=production
+nginx-rs-d9v27   1/1     Running   0          102s   app=my-nginx,env=production
+nginx-rs-m2nvk   1/1     Running   0          17m    app=my-nginx,env=production
+nginx-rs-mk2lr   1/1     Running   0          17m    app=my-nginx,env=production
+nginx-rs-whswc   1/1     Running   0          11m    app=my-nginx,env=production
+
+kubectl label po nginx-rs-79v4s app=my-nginx --overwrite		# Restored the label to origanal and check again
+kubectl get po --show-labels                        
+NAME             READY   STATUS    RESTARTS   AGE   LABELS
+nginx-rs-79v4s   1/1     Running   0          17m   app=my-nginx,env=production
+nginx-rs-8v7kw   1/1     Running   0          22m   app=my-nginx,env=production
+nginx-rs-m2nvk   1/1     Running   0          22m   app=my-nginx,env=production
+nginx-rs-mk2lr   1/1     Running   0          22m   app=my-nginx,env=production
+nginx-rs-whswc   1/1     Running   0          17m   app=my-nginx,env=production
+
+##########################################################################################################################################
+Deployment:
+nginx-deployment.yaml			# Create a nginx-deployment.yaml for deployment
+kubectl annotate deployment nginx-deployment kubernetes.io/change-cause="version change1" --overwrite=true
+Edit the nginx-deployment.yaml file, changing the image from nginx:latest to stable-perl
+kubectl apply -f nginx-deployment.yaml
+kubectl get po
+NAME                                READY   STATUS    RESTARTS   AGE
+nginx-deployment-5d948459bc-4dnnp   1/1     Running   0          103s
+nginx-deployment-5d948459bc-qn25p   1/1     Running   0          76s
+					or
+Kubectl get pods -w
+kubectl annotate deployment nginx-deployment kubernetes.io/change-cause="upgraded to stable-perl" --overwrite=true
+Do the same for image  nginx:1.18.0
+kubectl rollout status deployment/nginx-deployment
+
+Rollback to the Previous Version:
+kubectl rollout history deployment/nginx-deployment
+REVISION  CHANGE-CAUSE
+1         version change1
+2         upgraded to stable-perl
+
+kubectl get rs   
+NAME                          DESIRED   CURRENT   READY   AGE
+nginx-deployment-5d948459bc   2         2         2       17m
+nginx-deployment-7584b6f84c   0         0         0       28m
+
+kubectl rollout undo deployment/nginx-deployment		# To roleback of deployment.
+kubectl get rs
+NAME                          DESIRED   CURRENT   READY   AGE
+nginx-deployment-5d948459bc   0         0         0       19m
+nginx-deployment-7584b6f84c   2         2         2       30m
+
+Practice Guide: Setting Resource Limits in Kubernetes:
+Objective: Learn to apply CPU and memory limits to containers in Kubernetes pods.
+Part 1: Creating a Pod with Resource Limits.
+Create a file named myapp-pod.yaml.
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: webapp
+  name: web1
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+
+kubectl apply -f myapp-pod.yaml
+kubectl get po
+kubectl describe po web1
+
+Modify the resource limits:
+Edit myapp-pod.yaml to change the resource limits and provide diiferent pod name. For example, increase the memory limit to 512Mi and the CPU limit to 2, pod name-web2.
+kubectl apply -f myapp-pod.yaml				# Apply the changes
+minikube addons enable metrics-server		# enable metrix server
+After 2 mins
+kubectl top pod web2 						# check CPU utilizations
+kubectl delete -f myapp-pod.yaml			# this as part of cleanup
+
+Setting Up a DevOps Namespace with Jenkins and GitLab:
+Objective: Create a 'devops' namespace in Kubernetes, deploy Jenkins and GitLab as part of a DevOps toolset, and manage these resources.
+kubectl create namespace devops				# Creating 'devops' namespace
+Deploying the jenkins in devops namespace
+creating jenkins-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins
+  template:
+    metadata:
+      labels:
+        app: jenkins
+    spec:
+      containers:
+        - name: jenkins
+          image: jenkins/jenkins:lts
+          ports:
+            - containerPort: 8080
+kubectl apply -f jenkins-deployment.yaml
+kubectl expose deployment jenkins --name=jenkins-service --port=8080 --namespace=devops
+minikube service jenkins-service -n devops
+Deploying GitLab in the 'devops' Namespace:
+Creating gitlab-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitlab
+  namespace: devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitlab
+  template:
+    metadata:
+      labels:
+        app: gitlab
+    spec:
+      containers:
+        - name: gitlab
+          image: gitlab/gitlab-ce:latest
+          ports:
+            - containerPort: 80
+kubectl apply -f gitlab-deployment.yaml
+kubectl expose deployment gitlab --name=gitlab-service --port=80 --namespace=devops
+kubectl get all --namespace devops				# Command to list all resources in 'devops'
+kubectl delete namespace devops					# Deleting the 'devops' Namespace and Its Resources
+kubectl config get-contexts						# Check current namespace
+kubectl config set-context --current --namespace=<namespace>			# Set default namespace 
+kubectl config set-context --current --namespace=default				# Get to default
+
+#########################################################################################################################################
+Demo Guide: Taints and Tolerations in Kubernetes
+Learn to use taints and tolerations to control pod scheduling on Kubernetes nodes.
+kubectl get nodes				# To list the nodes
+kubectl taint nodes minikube size=small:NoSchedule				# Tainted for minikube
+kubectl taint nodes minikube-m02 size=medium:NoSchedule			# Tainted for minikube-m02
+Creating a Pod with Tolerations:
+Creating tolerant-pod.yaml										# Create a tolerant-pod.yaml file
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tolerant-pod 
+spec:
+  containers:
+  - name: nginx
+    image: nginx 
+  tolerations:
+  - key: "size"
+    operator: "Equal"
+    value: "medium"
+    effect: "NoSchedule"
+kubectl get po -o wide
+NAME           READY   STATUS    RESTARTS   AGE   IP           NODE           NOMINATED NODE   READINESS GATES
+tolerant-pod   1/1     Running   0          19s   10.244.1.2   minikube-m02   <none>           <none>
+Modify the tolerant-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tolerant-pod1 
+spec:
+  containers:
+  - name: nginx
+    image: nginx 
+  tolerations:
+  - key: "size"
+    operator: "Equal"
+    value: "small"
+    effect: "NoSchedule"
+kubectl apply -f tolerant-pod.yaml
+kubectl get po -o wide
+NAME           READY   STATUS    RESTARTS   AGE   IP           NODE           NOMINATED NODE   READINESS GATES
+tolerant-pod1   1/1     Running   0          45s     10.244.0.6   minikube       <none>           <none>
+Cleanup:Remove the Taint from the Node
+kunectl taint nodes minikube size=small:NoSchedule-
+kubectl taint nodes minikube-m02 size=medium:NoSchedule-
+kubectl delete po tolerant-pod tolerant-pod1
+
+##########################################################################################################################################
+Demo : Node Scheduling
+Node Affinity: Node Affinity is used to influence the scheduling of pods onto nodes based on node labels.
+Label a Node: First, label a node in your cluster:
+kubectl get no
+kubectl label nodes minikube disktype=ssd
+kunectl label nodes minikube-m02 disktype=hhd
+creating a pod with Node Affinity: nginx-affinity.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-ssd
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: disktype
+            operator: In
+            values:
+            - ssd
+  containers:
+  - name: nginx
+    image: nginx
+kubectl apply -f nginx-affinity.yaml
+$ kubectl get po -o wide
+NAME        READY   STATUS    RESTARTS   AGE   IP           NODE       NOMINATED NODE   READINESS GATES
+nginx-ssd   1/1     Running   0          30s   10.244.0.7   minikube   <none>           <none>
+
+change nginx-affinity.yaml:
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-hhd
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: disktype
+            operator: In
+            values:
+            - hhd
+  containers:
+  - name: nginx
+    image: nginx
+kubectl apply -f nginx-affinity.yaml
+$ kubectl get po -o wide
+NAME        READY   STATUS    RESTARTS   AGE   IP           NODE           NOMINATED NODE   READINESS GATES
+nginx-hhd   1/1     Running   0          64s   10.244.1.3   minikube-m02   <none>           <none>
+kubectl delete po nginx-hhd nginx-ssd
+
+#########################################################################################################################################
+Creating and Verifying a DaemonSet on Minikube:
+kubectl get no 				# To Ensure the nodes are running
+Creating a DaemonSet YAML File: fluentd.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd
+  labels:
+    app: fluentd
+spec:
+  selector:
+    matchLabels:
+      name: fluentd
+  template:
+    metadata:
+      labels:
+        name: fluentd
+    spec:
+      containers:
+      - name: fluentd-elasticsearch
+        image: quay.io/fluentd-elasticsearch/fluentd:latest
+ 
+kubectl get po -o wide								# To get the list of running pods.
+kubectl delete -f fluentd.yaml						# To delete the running pods.
+
+#########################################################################################################################################
+Config Map:	Creating a ConfigMap from a File.
+Create a separate configuration file that stores application settings instead of hardcoding them in the application code.
+creating app-config.properties
+database_url=example.com/db
+database_user=username
+database_password=password
+max_connection=100
+Ensure that this file contains key-value pairs in the format that your application expects
+Create a configmap from file
+kubectl create configmap myapp-config --from-file=app-config.properties			# This command creates a ConfigMap with the contents of app-config.properties.
+kubectl get configmap -o wide					# To list the configmap
+Create a pod that uses the configmap
+write a pod configuration yaml(nginx-pod.yaml) that mount the Config as a volume.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    envFrom:
+    - configMapRef:
+        name: myapp-config
+kunectl apply -f nginx-pod.yaml
+This configuration mounts the myapp-config ConfigMap to the /etc/config directory inside the pod.
+kubectl exec -it nginx-pod -- env
+Cleanup:
+Delete the Pod and ConfigMap
+kubectl delete -f nginx-pod.yaml
+kubectl delete configmap myapp-config
+
+Using Volumes in Pods:
+Using an emptyDir Volume
+Creating emptydir-valume.yaml
+kubectl apply -f emptyDir-volume.yaml
+
+Using a hostPath Volume:
+minikube ssh -n minikube-m02
+sudo su - 
+> mkdir /mnt/data
+> touch /mnt/data/config.txt
+> echo “some text” > /mnt/data/config.txt
+> exit
+> exit
+
+kubectl label node minikube-m02 nodetype=worker1
+Creating a hostpath-volume.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app2
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: nodetype
+            operator: In
+            values:
+            - worker1
+
+  containers:
+  - name: con1
+    image: nginx
+    volumeMounts:
+    - name: testvolume
+      mountPath: /mnt/data
+
+  volumes:
+  - name: testvolume
+    hostPath:
+      path: /mnt/data
+      type: Directory
+kubectl apply -f hostpath-volume.yaml
+kubectl exec -it app2 -- bash
+cd /mnt/data
+ls
+cat config.txt
+exit
+
+Secrets in Kubernetes:
+Objective:
+Learn to create, manage, and use Secrets in Kubernetes for storing and handling sensitive information like passwords, OAuth tokens, and SSH keys.
+Secrets: Secrets in Kubernetes are objects that store sensitive data, such as passwords, tokens, and keys, which you want to keep private.
+Secrets are similar to ConfigMaps but are specifically intended for confidential data.
+Note: Use the base64 command-line tool to encode your data. For example, to encode the word "password", you would use:
+echo -n 'password' | base64
+
+Creating my-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+type: Opaque
+data:
+  password: cGFzc3dvcmQ= # base64 encoded value of "password" [ echo -n 'password' | base64 ]
+kunectl apply -f my-secret.yaml
+kubectl get secret
+We can also create a Secret directly with kubectl:
+kubectl create secret generic my-secret --from-literal=password='my-password'			#This command creates the same Secret as above but without writing a YAML file.
+Secrets can be used in Pods as environment variables or as files in a volume. Here's an example of using a Secret as an environment variable:
+creating my-pod-secret.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+  - name: mycontainer
+    image: nginx
+    env:
+    - name: PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: my-secret
+          key: password
+kubectl apply -f my-pod-secret.yaml
+kubectl get po
+We can also mount Secrets as files in a Pod. This is useful for SSH keys, configuration files, etc.:
+
+creating my-pod1-secret.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod1
+spec:
+  containers:
+  - name: my-container1
+    image: nginx
+    volumeMounts:
+      - name: secret-volume
+        mountPath: "/etc/secret"
+        readOnly: true
+  volumes:
+  - name: secret-volume
+    secret:
+      secretName: my-secret
+
+Part 4: Best Practices for Using Secrets
+Avoid Storing Large Secrets: Secrets are stored in etcd and should not be used for large files such as certificates.
+Restrict Access to Secrets: Use RBAC policies to restrict who can create, view, and update Secrets.
+Encrypt Secrets at Rest: Configure your cluster to encrypt Secrets at rest in etcd.
+
+##########################################################################################################################################
+helmchart:
+A Helm Chart is a packaged collection of Kubernetes YAML files that defines, installs, and manages a Kubernetes application.
+Why We Need Helm Charts?
+Without Helm:
+You manually write multiple YAML files
+Deployment, Service, ConfigMap, Secret, Ingress, etc.
+Hard to manage versions
+Hard to upgrade
+With Helm:
+Everything is packaged
+Version controlled
+Easy install, upgrade, rollback
+
+How download the helmchart
+winget install Helm.Helm				# this can be run in windowpowershell
+helm version							# To verify the version of helm
+helm list
+helm create mychart						# To create the helmchart
+
+RBAC Practice Guide:
+$ kubectl api-versions
+admissionregistration.k8s.io/v1
+apiextensions.k8s.io/v1
+apiregistration.k8s.io/v1
+apps/v1
+authentication.k8s.io/v1
+authorization.k8s.io/v1
+autoscaling/v1
+autoscaling/v2
+batch/v1
+certificates.k8s.io/v1
+coordination.k8s.io/v1
+discovery.k8s.io/v1
+events.k8s.io/v1
+flowcontrol.apiserver.k8s.io/v1
+flowcontrol.apiserver.k8s.io/v1beta3
+metrics.k8s.io/v1beta1
+networking.k8s.io/v1
+node.k8s.io/v1
+policy/v1
+rbac.authorization.k8s.io/v1
+scheduling.k8s.io/v1
+storage.k8s.io/v1
+v1
+
+
+$ kubectl api-resources
+NAME                                SHORTNAMES   APIVERSION                        NAMESPACED   KIND
+bindings                                         v1                                true         Binding
+componentstatuses                   cs           v1                                false        ComponentStatus  
+configmaps                          cm           v1                                true         ConfigMap        
+endpoints                           ep           v1                                true         Endpoints        
+events                              ev           v1                                true         Event
+limitranges                         limits       v1                                true         LimitRange       
+namespaces                          ns           v1                                false        Namespace        
+nodes                               no           v1                                false        Node
+persistentvolumeclaims              pvc          v1                                true         PersistentVolumeClaim
+persistentvolumes                   pv           v1                                false        PersistentVolume 
+pods                                po           v1                                true         Pod
+podtemplates                                     v1                                true         PodTemplate      
+replicationcontrollers              rc           v1                                true         ReplicationController
+resourcequotas                      quota        v1                                true         ResourceQuota
+secrets                                          v1                                true         Secret
+serviceaccounts                     sa           v1                                true         ServiceAccount   
+services                            svc          v1                                true         Service
+mutatingwebhookconfigurations                    admissionregistration.k8s.io/v1   false        MutatingWebhookConfiguration
+validatingadmissionpolicies                      admissionregistration.k8s.io/v1   false        ValidatingAdmissionPolicy
+validatingadmissionpolicybindings                admissionregistration.k8s.io/v1   false        ValidatingAdmissionPolicyBinding
+validatingwebhookconfigurations                  admissionregistration.k8s.io/v1   false        ValidatingWebhookConfiguration
+customresourcedefinitions           crd,crds     apiextensions.k8s.io/v1           false        CustomResourceDefinition
+apiservices                                      apiregistration.k8s.io/v1         false        APIService       
+controllerrevisions                              apps/v1                           true         ControllerRevision
+daemonsets                          ds           apps/v1                           true         DaemonSet        
+deployments                         deploy       apps/v1                           true         Deployment
+replicasets                         rs           apps/v1                           true         ReplicaSet       
+statefulsets                        sts          apps/v1                           true         StatefulSet      
+selfsubjectreviews                               authentication.k8s.io/v1          false        SelfSubjectReview
+tokenreviews                                     authentication.k8s.io/v1          false        TokenReview
+localsubjectaccessreviews                        authorization.k8s.io/v1           true         LocalSubjectAccessReview
+selfsubjectaccessreviews                         authorization.k8s.io/v1           false        SelfSubjectAccessReview
+selfsubjectrulesreviews                          authorization.k8s.io/v1           false        SelfSubjectRulesReview
+subjectaccessreviews                             authorization.k8s.io/v1           false        SubjectAccessReview
+horizontalpodautoscalers            hpa          autoscaling/v2                    true         HorizontalPodAutoscaler
+cronjobs                            cj           batch/v1                          true         CronJob
+jobs                                             batch/v1                          true         Job
+certificatesigningrequests          csr          certificates.k8s.io/v1            false        CertificateSigningRequest
+leases                                           coordination.k8s.io/v1            true         Lease
+endpointslices                                   discovery.k8s.io/v1               true         EndpointSlice    
+events                              ev           events.k8s.io/v1                  true         Event
+flowschemas                                      flowcontrol.apiserver.k8s.io/v1   false        FlowSchema       
+prioritylevelconfigurations                      flowcontrol.apiserver.k8s.io/v1   false        PriorityLevelConfiguration
+nodes                                            metrics.k8s.io/v1beta1            false        NodeMetrics
+pods                                             metrics.k8s.io/v1beta1            true         PodMetrics       
+ingressclasses                                   networking.k8s.io/v1              false        IngressClass     
+ingresses                           ing          networking.k8s.io/v1              true         Ingress
+networkpolicies                     netpol       networking.k8s.io/v1              true         NetworkPolicy    
+runtimeclasses                                   node.k8s.io/v1                    false        RuntimeClass     
+poddisruptionbudgets                pdb          policy/v1                         true         PodDisruptionBudget
+clusterrolebindings                              rbac.authorization.k8s.io/v1      false        ClusterRoleBinding
+clusterroles                                     rbac.authorization.k8s.io/v1      false        ClusterRole      
+rolebindings                                     rbac.authorization.k8s.io/v1      true         RoleBinding      
+roles                                            rbac.authorization.k8s.io/v1      true         Role
+priorityclasses                     pc           scheduling.k8s.io/v1              false        PriorityClass    
+csidrivers                                       storage.k8s.io/v1                 false        CSIDriver
+csinodes                                         storage.k8s.io/v1                 false        CSINode
+csistoragecapacities                             storage.k8s.io/v1                 true         CSIStorageCapacity
+storageclasses                      sc           storage.k8s.io/v1                 false        StorageClass     
+volumeattachments                                storage.k8s.io/v1                 false        VolumeAttachment
+
+$ kubectl api-resources --api-group=rbac.authorization.k8s.io
+NAME                  SHORTNAMES   APIVERSION                     NAMESPACED   KIND
+clusterrolebindings                rbac.authorization.k8s.io/v1   false        ClusterRoleBinding
+clusterroles                       rbac.authorization.k8s.io/v1   false        ClusterRole
+rolebindings                       rbac.authorization.k8s.io/v1   true         RoleBinding
+roles                              rbac.authorization.k8s.io/v1   true         Role
+
+kubectl api-resources --api-group=rbac.authorization.k8s.io -o wide
+                                                CATEGORIES
+clusterrolebindings                rbac.authorization.k8s.io/v1   false        ClusterRoleBinding   create,delete,deletecollection,get,list,patch,update,watch
+clusterroles                       rbac.authorization.k8s.io/v1   false        ClusterRole          create,delete,deletecollection,get,list,patch,update,watch
+rolebindings                       rbac.authorization.k8s.io/v1   true         RoleBinding          create,delete,deletecollection,get,list,patch,update,watch
+roles                              rbac.authorization.k8s.io/v1   true         Role                 create,delete,deletecollection,get,list,patch,update,watch
+
+$ kubectl api-versions | grep rbac
+rbac.authorization.k8s.io/v1
+
+kubectl create serviceaccount demo-user					# Create a ServiceAccount and Configure Context
+
+kubectl create token demo-user					# To create token for particular serviceaccount
+eyJhbGciOiJSUzI1NiIsImtpZCI6InU3ZGtsTExPalBqcVlJOUV1Q1VGX3RiUEptb1BCc0wxS294MVA0RmZLQ1EifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiXSwiZXhwIjoxNzcxNjc2Mzk5LCJpYXQiOjE3NzE2NzI3OTksImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwianRpIjoiM2VhOTQ5YzctMWI4My00MTI0LWI2MWQtNTU0ZTU4ZjQyOWM1Iiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJkZWZhdWx0Iiwic2VydmljZWFjY291bnQiOnsibmFtZSI6ImRlbW8tdXNlciIsInVpZCI6IjkyMWNhMjg4LTU2OTUtNGQ2My04ZjNiLTc5YmZhY2VlZmQzOCJ9fSwibmJmIjoxNzcxNjcyNzk5LCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6ZGVmYXVsdDpkZW1vLXVzZXIifQ.SlrH0LVJmyZPERnGGs7IIiGvgdJTj7wXB1scI6a7grrC1MDZ-6FwrlJxmW-TS7ZD850vRotSN0JKKj54XRQ-PjKqD4GK3ISQaAMQ2Mo_KSgrNn1BlMZTKNVzL_oge_5exFraRzWHjbXntj8N7KvR6FY-juIz7MlubtcIw69NfwvTz1T1SV9ldam8cptl0xLHyiTpnqv7KsQykv21eA3KTUy-umeOf2w1pE7GcIdiMxwIhHU3VXEGAf6-4plwWg90cHPcI1HCvvvoySHKRE23opW-Fk8jNocs4tTbJ42Eyhqd1Z8kUtV75i1Xb6L9wzEllVIzuHb-5Ilnx3YvPfTgTw
+ 
+kubectl config set-credentials demo-user --token=$TOKEN		# To Set kubectl credentials using the token
+
+kubectl config get-contexts					# To View available contexts
+
+kubectl config set-context demo-user-context --cluster=minikube --user=demo-user --namespace=default	# Replace <cluster-name> with the actual cluster (e.g., minikube)
+
+kubectl config use-context demo-user-context		# To Switch to the new context
+
+kubectl config use-context minikube
+
+Creating role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: demo-role
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "create", "update", "list", "watch"]
+
+Creating the rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: demo-role-binding
+    namespace: default
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: demo-role
+      subjects:
+      - kind: ServiceAccount
+        name: demo-user
+        namespace: default
+kubectl apply -f role.yaml
+kubectl apply -f rolebinding.yaml
+kubectl get po 
+kubectl run pod4 --image=nginx
+kubectl get po
+kubectl delete po pod4
+Error from server (Forbidden): pods "pod4" is forbidden: User "system:serviceaccount:default:demo-user" cannot delete resource "pods" in API group "" in the namespace "default"

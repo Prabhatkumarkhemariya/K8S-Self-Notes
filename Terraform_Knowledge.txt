@@ -1,0 +1,616 @@
+Terraform – Description
+Terraform is an open-source Infrastructure as Code (IaC) tool that allows you to define, provision, and manage infrastructure using declarative configuration files. It is used to automate infrastructure provisioning, ensure consistency across environments, enable version control of infrastructure, and support scalable, repeatable deployments across multiple cloud and on-prem platforms.
+
+Terraform is an Infrastructure as Code (IaC) tool developed by HashiCorp that enables DevOps engineers to provision, manage, and version cloud infrastructure using declarative configuration files. It allows infrastructure to be defined as code, making deployments repeatable, consistent, and automated across environments.
+
+Terraform supports AWS, Azure, GCP, and on-premises platforms, enabling the creation and management of resources such as VPCs, EC2 instances, EKS clusters, IAM roles, security groups, and load balancers. It uses a state file to track infrastructure changes and provides features like execution plans, modular design, and resource dependency management to safely apply updates.
+
+By integrating Terraform with CI/CD pipelines, teams can achieve automated infrastructure provisioning, version control, scalability, and reduced manual errors, making it a core tool in modern DevOps and cloud-native environments.
+
+############################################
+Main commands:
+  init          Prepare your working directory for other commands
+  validate      Check whether the configuration is valid
+  plan          Show changes required by the current configuration
+  apply         Create or update infrastructure
+  destroy       Destroy previously-created infrastructure
+
+
+All other commands:
+  console       Try Terraform expressions at an interactive command prompt
+  fmt           Reformat your configuration in the standard style
+  force-unlock  Release a stuck lock on the current workspace
+  get           Install or upgrade remote Terraform modules
+  graph         Generate a Graphviz graph of the steps in an operation
+  import        Associate existing infrastructure with a Terraform resource
+  login         Obtain and save credentials for a remote host
+  logout        Remove locally-stored credentials for a remote host
+  metadata      Metadata related commands
+  modules       Show all declared modules in a working directory
+  output        Show output values from your root module
+  providers     Show the providers required for this configuration
+  refresh       Update the state to match remote systems
+  show          Show the current state or a saved plan
+  state         Advanced state management
+  taint         Mark a resource instance as not fully functional
+  test          Execute integration tests for Terraform modules
+  untaint       Remove the 'tainted' state from a resource instance
+  version       Show the current Terraform version
+  workspace     Workspace management
+
+Global options (use these before the subcommand, if any):
+  -chdir=DIR    Switch to a different working directory before executing the
+                given subcommand.
+  -help         Show this help output, or the help for a specified subcommand.
+  -version      An alias for the "version" subcommand.
+PS C:\Edu_sep21_DCP\project1\project2> 
+
+####################################################
+Key Characteristics:
+Declarative (describe what, not how)
+Cloud-agnostic (AWS, Azure, GCP, Kubernetes)
+Version-controlled infrastructure
+Supports immutable infrastructure
+State-based resource management
+############################################
+2️⃣ Terraform Architecture (How Terraform Works)
+High-Level Flow
+User → Terraform CLI → Providers → Cloud APIs
+               ↓
+           State File
+		   
+		   
+		  
+ Configuartion - (	Terraform CLI	)   - Provider - state 
+		          (terraform engine )
+				  
+				       Module 
+					   
+Terraform Architecture
+Terraform uses a CLI, core engine, providers, and a state file to manage infrastructure lifecycle.	
+##########################
+1Terraform CLI
+Command-line tool used by users
+Executes commands:
+terraform init
+terraform plan
+terraform apply
+terraform destroy
+
+###############################
+
+2️ Terraform Core
+The brain of Terraform.
+Responsibilities:
+Reads .tf files
+Builds dependency graph
+Compares desired state vs current state
+Creates execution plan
+Calls providers
+################################
+3️⃣ Providers
+
+Providers are plugins that allow Terraform to interact with APIs.
+Examples:
+aws
+azurerm
+google
+kubernetes
+
+provider "aws" {
+  region = "ap-south-1"
+}
+Provider translates Terraform code → AWS API calls
+
+###########################
+4️ State File (terraform.tfstate)
+Terraform state file is a JSON document that stores metadata, outputs, resource mappings, attributes, and dependency information required to manage infrastructure lifecycl
+
+Metadata in the Terraform state file includes resource IDs, attributes, dependencies, and provider details that allow Terraform to manage infrastructure lifecycle accurately.
+
+terraform.tfstate
+├── version   (version represents the STATE FILE FORMAT VERSION)
+├── terraform_version (  terraform_version tells which Terraform binary version
+last created or modified the state file)
+├── serial
+├── lineage
+├── outputs
+└── resources
+    └── instances
+        └── attributes
+
+Stores current infrastructure state
+Maps resources ↔ real cloud objects
+Used for drift detection
+📌 Stored:
+Locally (default)
+Remotely (S3 + DynamoDB – recommended)
+###################################################
+5️⃣ Backend
+Terraform backend is responsible for storing the state file remotely, enabling state locking, collaboration, security, and consistency across teams.
+
+Terraform stores state locally on your system.
+But in team / production environments, this is not safe or scalable.
+So we use a backend to store the state remotely and securely.
+
+Terraform Backend Workflow
+terraform init
+     ↓
+Configure backend
+     ↓
+State stored remotely
+     ↓
+terraform plan
+terraform apply
+
+
+Backend defines where and how state is stored.
+terraform {
+  backend "s3" {
+    bucket         = "my-terraform-state-bucket"
+    key            = "dev/vpc/terraform.tfstate"
+    region         = "ap-south-1"
+    dynamodb_table = "terraform-lock"
+    encrypt        = true
+  }
+}
+
+What each field means:
+bucket → S3 bucket for state
+key → Path of state file
+region → AWS region
+dynamodb_table → State locking
+encrypt → Encrypt state file
+
+usess
+✔ Enables:
+Remote state
+State locking
+Team collaboration
+
+########################
+
+6️⃣ Dependency Graph
+Terraform Dependency Graph is an internal mechanism that automatically determines the correct order of resource creation and destruction based on dependencies, without requiring manual intervention.
+
+Terraform automatically determines:
+Resource creation order
+Resource destruction order
+Creation Order:
+Subnet (network layer)
+EC2 (compute inside subnet)
+ALB (routes traffic to EC2)
+Destruction Order:
+
+ALB
+
+EC2
+
+Subnet
+Terraform handles this automatically.
+Example:
+subnet → ec2 → alb
+No need to manually manage dependencies.
+3. No Manual Ordering Needed
+You don’t need to write scripts like:
+create subnet
+wait
+create ec2
+wait
+create alb
+Terraform handles everything.
+####
+Terraform Commands Related to Dependency Graph
+View Dependency Graph:
+terraform graph
+You can visualize it using Graphviz:
+terraform graph | dot -Tpng > graph.png
+
+################################################
+3️⃣ Terraform Components (Files & Blocks)
+Files → Where Terraform code is written
+Blocks → Logical sections inside those files that define infrastructure
+Together, files + blocks = complete Terraform configuration.
+Terraform Blocks (Inside Files)
+#####Terraform code is written using blocks, such as:
+Block Type	Purpose
+provider	Cloud configuration
+resource	Infrastructure creation
+variable	Input parameters
+output	    Display results
+module	     Reusable infrastructure
+terraform	Backend & version settings
+
+Terraform files
+terraform-project/
+│
+├── main.tf      
+├── variables.tf
+├── terraform.tfvars
+├── outputs.tf
+├── provider.tf
+├── backend.tf
+├── versions.tf
+└── modules/
+##############################
+main.tf 
+Definition
+main.tf is the primary Terraform configuration file where you define the main infrastructure resources that Terraform will create and manage.
+main.tf is the primary Terraform configuration file that defines the core infrastructure resources and module calls for a project.
+
+In simple words:
+main.tf contains the actual infrastructure code such as EC2, VPC, Subnet, ALB, S3, etc.
+1️⃣ main.tf
+Contains:
+Providers
+Resources
+Data sources
+
+✅ 1. Provider Usage (Sometimes)
+Although providers are often placed in provider.tf, they can exist in main.tf.
+✅ 2. Resource Definitions
+resource "aws_instance" "web" {
+  ami           = "ami-123"
+  instance_type = "t2.micro"
+}
+✅ 3. Module Calls
+module "vpc" {
+  source = "./modules/vpc"
+}
+
+✅ 4. Data Sources (Optional)
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+}
+
+Why is main.tf Called a Core Terraform File?
+Terraform projects usually contain multiple .tf files, but:
+main.tf holds the core logic
+It is the entry point for infrastructure definition
+Terraform reads all .tf files together, but main.tf is the standard naming convention
+📌 The name is not mandatory, but industry best practice.
+
+##################################
+2️⃣ variables.tf
+Definition
+variables.tf is used to declare input variables that make Terraform configurations dynamic, reusable, and flexible.
+Why We Use variables.tf?
+Avoid hard-coding values
+Reuse code across environments (dev, test, prod)
+Improve readability and maintainability
+Example
+variable "region" {
+  description = "AWS region"
+  type        = string
+  default     = "ap-south-1"
+}
+variable "instance_type" {
+type = string
+}
+###
+How It’s Used
+provider "aws" {
+  region = var.region
+}
+
+resource "aws_instance" "web" {
+  instance_type = var.instance_type
+}
+
+#############
+3️⃣ terraform.tfvars
+📌 Definition
+terraform.tfvars provides actual values for variables declared in variables.tf.
+Example
+instance_type = "t2.micro"
+region        = "ap-south-1"
+📌 Terraform automatically loads this file.
+##########################################
+Variables declared → variables.tf
+Values assigned → terraform.tfvars
+###############################################
+outputs.tf
+📌 Definition
+outputs.tf is used to display or expose values after Terraform creates infrastructure.
+Why We Use It?
+Show important information (IP, VPC ID)
+Pass values to other modules
+Debug and verification
+Example
+output "instance_public_ip" {
+  value = aws_instance.web.public_ip
+}
+Output After Apply
+instance_public_ip = 13.234.xxx.xxx
+outputs.tf is used to expose important infrastructure values after resource creation.
+##############################################
+5️⃣ provider.tf
+📌 Definition
+provider.tf specifies which cloud or service provider Terraform should use (AWS, Azure, GCP, etc.).
+Example
+provider "aws" {
+  region = "ap-south-1"
+}
+🔹 Why Separate File?
+Clean structure
+Easy provider updates
+Supports multi-provider setups
+provider.tf configures the cloud provider and authentication details used by Terraform.
+
+###########################################
+6️⃣ backend.tf
+backend.tf is a Terraform configuration file that defines where Terraform stores the state file (terraform.tfstate) remotely instead of on a local machine.
+🔹 Example (S3 Backend)
+terraform {
+  backend "s3" {
+    bucket         = "terraform-state-bucket"
+    key            = "dev/terraform.tfstate"
+    region         = "ap-south-1"
+    dynamodb_table = "terraform-lock"
+    encrypt        = true
+  }
+}
+
+bucket → name of the S3 bucket
+key → path + filename inside the S3 bucket
+Folder: dev
+File: terraform.tfstate
+Helps separate environments:
+##region = "ap-south-1"
+
+##dynamodb_table = "terraform-lock"
+dynamodb_table → name of DynamoDB table
+Used for state locking
+Prevents:
+Two users running terraform apply at the same time
+State file corruption
+📌 Table must exist with:
+Primary key: LockID
+👉 Remote state helps with:
+Team collaboration
+State locking
+Backup & security
+#########
+encrypt = true
+Enables server-side encryption for the state file in S3
+Terraform state may contain:
+Passwords
+Secrets
+Private IPs
+📌 true = encrypted
+📌 false = not secure (not recommended)
+7#######################
+️⃣ versions.tf
+📌 Definition
+versions.tf enforces Terraform and provider version constraints.
+Example
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+versions.tf ensures consistent Terraform and provider versions across environments.
+
+###############
+Terraform Module
+A module is a reusable block of Terraform code that helps standardize and scale infrastructure.	
+A module is a reusable, configurable collection of Terraform files.
+📌 Root module = current directory
+📌 Child module = called by root module
+
+Why Use Modules?
+Reusability
+Clean code
+Standardization
+Scalability
+Team collaboration
+##########
+Module Types
+Type	Description
+Root module 	Main working directory
+Child module	Reusable module
+Local module	Stored locally
+Remote module	GitHub / Registry
+
+Module Structure
+modules/
+ └── vpc/
+     ├── main.tf
+     ├── variables.tf
+     ├── outputs.tf
+########	 
+Calling a Module
+module "vpc" {
+  source     = "./modules/vpc"
+  cidr_block = "10.0.0.0/16"
+}
+
+#########
+Public Modules (Terraform Registry)
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "5.1.0"
+}
+
+6️⃣ Terraform vs Traditional Approach
+Traditional	Terraform
+Manual setup	Automated
+Error-prone	Consistent
+No versioning	Git-based
+Hard to scale	Easily scalable
+ 
+######################
+Real-World DevOps Architecture (AWS Example)
+Terraform
+  ├── VPC Module
+  ├── Subnet Module
+  ├── EC2 Module
+  ├── ALB Module
+  ├── EKS Module
+#######################################################
+📁 Terraform EC2 Module – Complete Example
+1️⃣ Project Structure
+terraform-ec2-project/
+│
+├── main.tf                # Root module
+├── variables.tf
+├── outputs.tf
+├── provider.tf
+│
+└── modules/
+    └── ec2/
+        ├── main.tf
+        ├── variables.tf
+        ├── outputs.tf
+
+2️⃣ EC2 MODULE (Reusable Code)
+📁 modules/ec2/variables.tf
+variable "ami_id" {
+  description = "AMI ID for EC2"
+  type        = string
+}
+
+variable "instance_type" {
+  description = "EC2 instance type"
+  type        = string
+}
+
+variable "subnet_id" {
+  description = "Subnet ID"
+  type        = string
+}
+
+variable "security_group_ids" {
+  description = "Security group IDs"
+  type        = list(string)
+}
+
+variable "key_name" {
+  description = "Key pair name"
+  type        = string
+}
+
+variable "instance_name" {
+  description = "EC2 instance name"
+  type        = string
+}
+
+📁 modules/ec2/main.tf
+resource "aws_instance" "this" {
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  subnet_id              = var.subnet_id
+  vpc_security_group_ids = var.security_group_ids
+  key_name               = var.key_name
+
+  tags = {
+    Name = var.instance_name
+  }
+}
+
+📁 modules/ec2/outputs.tf
+output "instance_id" {
+  value = aws_instance.this.id
+}
+
+output "public_ip" {
+  value = aws_instance.this.public_ip
+}
+
+3️⃣ ROOT MODULE (Calling EC2 Module)
+📁 provider.tf
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = "ap-south-1"
+}
+
+📁 variables.tf
+variable "ami_id" {
+  default = "ami-0f5ee92e2d63afc18"  # Amazon Linux 2 (example)
+}
+
+variable "instance_type" {
+  default = "t2.micro"
+}
+
+variable "subnet_id" {
+  description = "Existing subnet ID"
+}
+
+variable "security_group_ids" {
+  description = "Existing security groups"
+  type        = list(string)
+}
+
+variable "key_name" {
+  default = "my-keypair"
+}
+
+📁 main.tf
+module "ec2_instance" {
+  source = "./modules/ec2"
+
+  ami_id             = var.ami_id
+  instance_type      = var.instance_type
+  subnet_id          = var.subnet_id
+  security_group_ids = var.security_group_ids
+  key_name           = var.key_name
+  instance_name      = "dev-ec2-server"
+}
+
+📁 outputs.tf
+output "ec2_instance_id" {
+  value = module.ec2_instance.instance_id
+}
+
+output "ec2_public_ip" {
+  value = module.ec2_instance.public_ip
+}
+
+4️⃣ terraform.tfvars (Values File)
+subnet_id = "subnet-0abc12345"
+security_group_ids = ["sg-0123456789"]
+
+5️⃣ Terraform Commands (Execution Flow)
+terraform init
+terraform validate
+terraform plan
+terraform apply
+
+6️⃣ What This Module Demonstrates (Interview Points)
+
+✅ Reusable EC2 module
+✅ Clean separation of root & child module
+✅ Variables & outputs
+✅ Production-ready structure
+✅ Easy scaling (multiple EC2s)
+
+7️⃣ Real-World Usage Example
+module "ec2_app" {
+  source = "./modules/ec2"
+  instance_name = "app-server"
+}
+
+module "ec2_bastion" {
+  source = "./modules/ec2"
+  instance_name = "bastion-host"
+}
+
+
+		  
+
+				  
+				         

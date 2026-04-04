@@ -1,0 +1,16 @@
+Logic to Remember of chmod : 421
+Explaination
+Owner 		Group		Others
+4      +     2     +     1		
+Read		write		execute
+
+0	---  								- Nothing
+1	--x  								- Execute(Can run but cannot see or change)
+2	-w-  	 							- write (Can change, but cannot read/run)
+3	-wx(2-write+1-Execute)				- write+execute (Can change and run and don't see)
+4	r--(Read)							- Can only see
+5	r-x(4-read+1-execute)				- Can see and run but not change
+6	rw-(4-Read+2-write)					- Can see and change but not run
+7	rwx(6-(Read+write)+1-execute)		- Can do every thing
+
+	

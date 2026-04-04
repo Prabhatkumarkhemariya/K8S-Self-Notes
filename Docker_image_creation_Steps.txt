@@ -1,0 +1,185 @@
+Scenario1:
+We will create a Docker image that:
+Uses Ubuntu
+Prints “Hello from Docker”
+
+1) Check Docker installation
+docker --version
+
+2) Create a Project Directory
+mkdir simple-docker-image
+cd simple-docker-image
+
+3) Create a Simple Script
+Create hello.sh
+vi hello.sh
+
+4) Add this content:
+#!/bin/bash
+echo "Hello from Docker"
+Save and exit.
+
+5) Make it executable:
+chmod +x hello.sh
+
+6) Create a Dockerfile
+vi Dockerfile
+Dockerfile: A Dockerfile is a set of instructions that tells Docker how to build an image.
+Add this content:
+# Step 1: Base image
+FROM ubuntu:22.04
+
+# Step 2: Copy script into container
+COPY hello.sh /hello.sh
+
+# Step 3: Set execute permission
+RUN chmod +x /hello.sh
+
+# Step 4: Command to run when container starts
+CMD ["/hello.sh"]
+
+7) Build the Docker Image
+Run this command inside the project directory:
+docker build -t simple-hello-image .
+What this does:
+-t simple-hello-image → names the image
+. → uses current directory
+
+8) Verify Image Creation
+docker images
+You should see:
+simple-hello-image
+
+9) Run the Docker Image
+Now create and run a container from the image:
+docker run simple-hello-image
+
+Output:
+Hello from Docker
+
+Remove Container & Image
+docker ps -a
+docker rm <container_id>
+docker rmi simple-hello-image
+
+===============================================================================================
+This is a core Docker workflow: build image → run container → expose/forward ports.
+
+Scenario2: 
+1) Create a Docker image
+2) Run a container
+3) Forward a container port to the host (port mapping)
+
+1. Create a simple application
+HTTP server
+Create a file called app.py
+
+from http.server import SimpleHTTPRequestHandler, HTTPServer
+
+server = HTTPServer(("0.0.0.0", 8000), SimpleHTTPRequestHandler)
+print("Server running on port 8000")
+server.serve_forever()
+
+This server listens on port 8000 inside the container.
+
+line1:
+from http.server import SimpleHTTPRequestHandler, HTTPServer
+
+1️ HTTPServer
+Creates an HTTP server
+Listens for incoming HTTP requests (GET, HEAD, etc.)
+Manages socket connections
+
+2️ SimpleHTTPRequestHandler
+Handles HTTP requests
+Implements logic for:
+GET requests
+Serving files
+Returning HTTP responses
+
+Line 2: Create the server:
+server = HTTPServer(("0.0.0.0", 8000), SimpleHTTPRequestHandler)
+
+8000 – Port number
+Server listens on port 8000
+Port identifies the application
+
+| Port | Typical usage  |
+| ---- | -------------- |
+| 80   | HTTP           |
+| 443  | HTTPS          |
+| 8000 | Dev servers    |
+| 8080 | Alternate HTTP |
+
+SimpleHTTPRequestHandler
+Tells the server:
+“Use this class to handle incoming HTTP requests”
+
+Line 3: Print message:
+print("Server running on port 8000")
+Purpose
+Logs a message to the console
+Confirms the server has started
+
+Line 4: Start the server loop:
+server.serve_forever()
+What it does
+Starts an infinite loop
+Server keeps:
+Listening for requests
+Processing them
+Responding
+
+2. Create Dockerfile
+Create a file named Dockerfile
+# Base image
+FROM python:3.10-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy application
+COPY app.py .
+
+# Expose container port (documentation purpose)
+EXPOSE 8000
+
+# Run application
+CMD ["python", "app.py"]
+
+3. Build the Docker image
+docker build -t python-web-app .
+What happens
+Docker reads Dockerfile
+Builds an image named:
+python-web-app:latest
+
+4. Run the container with port forwarding
+docker run -d -p 8080:8000 python-web-app
+
+5. Access the application
+
+Understanding Port Forwarding (-p)
+-p <host_port>:<container_port>
+
+6. Verify container is running
+docker ps
+You’ll see something like:
+0.0.0.0:8080->8000/tcp
+
+EXPOSE vs -p (Very Important)
+EXPOSE
+EXPOSE 8000
+Just documents the port
+Does NOT publish it
+
+-p
+-p 8080:8000
+Actually exposes the port
+Required for host access
+
+To check the container logs:
+docker logs <container_id>
+
+To enter the in container:
+docker exec -it <container_id> /bin/bash

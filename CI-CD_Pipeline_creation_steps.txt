@@ -1,0 +1,161 @@
+Required Tool for CI-CD-Pipeline:
+✅ GitHub Actions
+✅ Terraform
+✅ Minikube
+✅ Self-hosted runner
+
+Now I’ll give you a step-by-step structured practice plan to build a real CI/CD pipeline locally.
+Code Push
+   ↓
+GitHub Actions (self-hosted)
+   ↓
+Build Docker Image
+   ↓
+Push to Local Registry
+   ↓
+Terraform Deploy to Minikube
+   ↓
+Kubernetes Running App
+
+STEP 0 – Prerequisites (One-Time Setup)
+Make sure on your runner machine:
+docker --version
+kubectl version --client
+terraform version
+minikube version
+
+Start Minikube:
+minikube start
+minikube addons enable ingress
+minikube addons enable metrics-server
+
+STEP 1 – Create Sample Application:
+Create folder:
+devops-ci-cd-project/
+
+Inside create:
+app.js
+const express = require("express");
+const app = express();
+
+app.get("/", (req, res) => {
+  res.send("CI-CD Practice Project 🚀");
+});
+
+app.listen(3000, () => {
+  console.log("App running on port 3000");
+});
+
+package.json
+{
+  "name": "devops-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+
+STEP 2 – Create Dockerfile:
+FROM node:18-alpine
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+EXPOSE 3000
+
+CMD ["node", "app.js"]
+
+Test locally:
+docker build -t devops-app .
+docker run -p 3000:3000 devops-app
+
+Check in browser:
+http://localhost:3000
+
+STEP 3 – Setup Local Docker Registry (Simulate ECR):
+docker tag devops-app localhost:5000/devops:1
+docker push localhost:5000/devops-app:1
+Now your cluster can pull images from:
+localhost:5000/devops-app:1
+
+STEP 4 – Terraform for Kubernetes Deployment
+Create folder:
+infra/
+provider.tf
+provider "kubernetes" {
+  config_path = "~/.kube/config"
+}
+
+main.tf
+resource "kubernetes_deployment" "app" {
+  metadata {
+    name = "devops-app"
+    labels = {
+      app = "devops"
+    }
+  }
+
+  spec {
+    replicas = 2
+
+    selector {
+      match_labels = {
+        app = "devops"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "devops"
+        }
+      }
+
+      spec {
+        container {
+          name  = "devops-container"
+          image = "localhost:5000/devops-app:1"
+
+          port {
+            container_port = 3000
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_service" "app" {
+  metadata {
+    name = "devops-service"
+  }
+
+  spec {
+    selector = {
+      app = "devops"
+    }
+
+    port {
+      port        = 80
+      target_port = 3000
+    }
+
+    type = "NodePort"
+  }
+}
+
+Test manually:
+cd infra
+terraform init
+terraform apply -auto-approve
+
+Verify:
+minikube service devops-service
+
+Access using:
+minikube service devops-service
+
+STEP 5 – Create GitHub Repository
+Push entire project to GitHub.
